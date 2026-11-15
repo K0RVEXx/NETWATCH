@@ -46,7 +46,7 @@ def test_dashboard_serves_page_and_state(dash):
 
 
 def test_dashboard_serves_icon(dash):
-    assert get(dash.url + "icon.png").read()[:4] == b"PNG"
+    assert get(dash.url + "icon.png").read()[1:4] == b"PNG"
 
 
 def test_dashboard_listens_on_localhost_only(dash):
