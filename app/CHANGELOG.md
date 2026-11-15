@@ -3,6 +3,17 @@
 All notable changes to NETWATCH are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1] - 2026-11-15
+
+### Changed
+- Redesigned dashboard in a clean security-tool style: NETWATCH icon in the title bar,
+  status strip, live traffic chart with axes (last 2 minutes), connections table with
+  search, "only flagged" filter and sortable columns, alerts list, destination map and
+  breakdowns by app and country
+
+### Fixed
+- The destination map now always frames every destination and draws the full base map
+
 ## [1.0.0] - 2026-11-15
 
 ### Added
