@@ -4,201 +4,427 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NETWATCH Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
-    --bg: #0b0c0b; --panel: #121412; --line: #262a26; --text: #c9d1c9; --muted: #6f786f;
-    --green: #16c60c; --cyan: #61d6d6; --yellow: #f9f1a5; --red: #e74856;
-    --mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+    --bg: #07080a; --bg2: #0c0e12; --panel: rgba(16, 19, 24, .82); --line: #1e242c; --line2: #2a323c;
+    --text: #cfd6dd; --muted: #6b7682; --dim: #3b444e;
+    --green: #22e06b; --green-d: #0f7a3a; --cyan: #4fd8e8; --purple: #a46bff; --purple-d: #5b2fb3;
+    --yellow: #ffd257; --red: #ff4d6a;
+    --mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+    --r: 10px;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--mono); }
-  header { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
-           padding: 16px 24px; border-bottom: 1px solid var(--line); }
-  header h1 { margin: 0; color: var(--green); font-size: 22px; letter-spacing: 4px; }
-  header .sub { color: var(--cyan); }
-  header .right { margin-left: auto; color: var(--muted); }
-  .chip { display: inline-block; padding: 1px 8px; border: 1px solid currentColor; border-radius: 3px; font-size: 12px; }
-  .ok { color: var(--green); } .warn { color: var(--yellow); } .high { color: var(--red); } .info { color: var(--cyan); }
-  main { display: grid; gap: 16px; padding: 16px 24px; grid-template-columns: 2fr 1fr; }
-  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 12px 16px; } }
-  .tiles { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
-  .tile { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; }
-  .tile .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
-  .tile .v { color: var(--green); font-size: 22px; margin-top: 2px; font-variant-numeric: tabular-nums; }
-  section { background: var(--panel); border: 1px solid var(--line); min-width: 0; }
-  section h2 { margin: 0; padding: 10px 14px; font-size: 13px; color: var(--cyan);
-               border-bottom: 1px solid var(--line); letter-spacing: 2px; text-transform: uppercase; }
-  #map { height: 420px; background: #0e100e; }
-  .leaflet-container { font: 12px var(--mono); }
-  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--panel); color: var(--text); }
-  #alerts { max-height: 420px; overflow: auto; }
-  .alert { padding: 8px 14px; border-bottom: 1px solid var(--line); }
-  .alert .t { color: var(--muted); font-size: 12px; }
-  .alert.approved { opacity: .45; }
-  .wide { grid-column: 1 / -1; }
-  .toolbar { display: flex; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
-  input { flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--line);
-          padding: 6px 10px; font: inherit; }
-  .table-wrap { overflow: auto; max-height: 520px; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; color: var(--text); font: 13px/1.5 var(--mono);
+    background:
+      radial-gradient(1200px 600px at 85% -10%, rgba(164, 107, 255, .14), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(34, 224, 107, .08), transparent 60%),
+      linear-gradient(var(--bg), var(--bg2));
+    background-attachment: fixed;
+  }
+  body::before {           /* faint grid */
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: linear-gradient(to bottom, black, transparent 80%);
+  }
+  .wrap { position: relative; z-index: 1; max-width: 1500px; margin: 0 auto; padding: 0 24px 32px; }
+  @media (max-width: 700px) { .wrap { padding: 0 16px 24px; } }
+
+  /* ---------- header ---------- */
+  header { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 22px 0 18px; }
+  .logo { display: flex; align-items: center; gap: 14px; }
+  .mark { width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center;
+          background: linear-gradient(135deg, var(--purple-d), #1b1030); border: 1px solid #6c46c4;
+          box-shadow: 0 0 24px rgba(164, 107, 255, .35); }
+  .mark svg { width: 24px; height: 24px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 6px; color: #fff; }
+  h1 span { color: var(--green); }
+  .sub { color: var(--muted); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; }
+  .sub b { color: var(--cyan); font-weight: 600; letter-spacing: 0; text-transform: none; }
+  .status { margin-left: auto; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+          border: 1px solid var(--line2); background: rgba(255,255,255,.02); font-size: 11px;
+          letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; position: relative; }
+  .dot.live::after { content: ""; position: absolute; inset: -4px; border-radius: 50%;
+                     border: 2px solid currentColor; animation: ping 1.6s ease-out infinite; }
+  @keyframes ping { from { transform: scale(.6); opacity: .9; } to { transform: scale(1.8); opacity: 0; } }
+  .pill.ok { color: var(--green); border-color: rgba(34,224,107,.35); }
+  .pill.warn { color: var(--yellow); border-color: rgba(255,210,87,.35); }
+  .pill.bad { color: var(--red); border-color: rgba(255,77,106,.4); }
+  .pill.learn { color: var(--purple); border-color: rgba(164,107,255,.4); }
+  .clock { color: var(--muted); font-size: 12px; }
+
+  /* ---------- cards ---------- */
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(12, 1fr); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+          backdrop-filter: blur(6px); min-width: 0; overflow: hidden;
+          box-shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 12px 30px rgba(0,0,0,.35); }
+  .card-h { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .card-h h2 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; color: var(--text); }
+  .card-h .tag { margin-left: auto; color: var(--muted); font-size: 11px; }
+  .badge { min-width: 22px; padding: 1px 7px; border-radius: 999px; font-size: 11px; text-align: center;
+           background: rgba(255,77,106,.15); color: var(--red); border: 1px solid rgba(255,77,106,.35); }
+  .badge.zero { background: rgba(34,224,107,.1); color: var(--green); border-color: rgba(34,224,107,.3); }
+
+  .span-12 { grid-column: span 12; } .span-8 { grid-column: span 8; } .span-4 { grid-column: span 4; }
+  .span-6 { grid-column: span 6; } .span-2 { grid-column: span 2; }
+  @media (max-width: 1100px) { .span-8, .span-4 { grid-column: span 12; } .span-2 { grid-column: span 4; } }
+  @media (max-width: 700px) { .span-6 { grid-column: span 12; } .span-2 { grid-column: span 6; }
+                              .grid { gap: 12px; } .stat .v { font-size: 22px; } #map { height: 340px; } }
+
+  /* ---------- stat tiles ---------- */
+  .stat { padding: 14px 16px 10px; position: relative; }
+  .stat .k { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 10.5px;
+             letter-spacing: 1.8px; text-transform: uppercase; }
+  .stat .k svg { width: 14px; height: 14px; opacity: .9; }
+  .stat .v { font-size: 26px; font-weight: 800; color: #fff; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .stat .v small { font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+  .stat .spark { display: block; width: 100%; height: 30px; margin-top: 4px; }
+  .stat.c-green .k svg { color: var(--green); } .stat.c-cyan .k svg { color: var(--cyan); }
+  .stat.c-purple .k svg { color: var(--purple); } .stat.c-red .k svg { color: var(--red); }
+
+  /* ---------- map ---------- */
+  #map { height: 460px; background: #0b0d11; }
+  .leaflet-container { font: 12px var(--mono); background: #0b0d11; }
+  .leaflet-control-zoom a { background: var(--bg2) !important; color: var(--text) !important; border-color: var(--line2) !important; }
+  .leaflet-control-attribution { background: rgba(7,8,10,.7) !important; color: var(--dim) !important; }
+  .leaflet-control-attribution a { color: var(--muted) !important; }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #11141a; color: var(--text);
+          border: 1px solid var(--line2); box-shadow: 0 10px 30px rgba(0,0,0,.6); }
+  .leaflet-popup-content { margin: 12px 14px; }
+  .pop-t { color: #fff; font-weight: 600; margin-bottom: 6px; }
+  .pop-a { color: var(--green); }
+  .pulse { position: relative; }
+  .pulse::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid currentColor;
+                  animation: ping 2s ease-out infinite; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 10px 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+
+  /* ---------- alerts ---------- */
+  #alerts { max-height: 504px; overflow: auto; }
+  .alert { display: grid; grid-template-columns: 4px 1fr; border-bottom: 1px solid var(--line); }
+  .alert .bar { background: var(--yellow); }
+  .alert.high .bar { background: var(--red); } .alert.info .bar { background: var(--cyan); }
+  .alert .body { padding: 10px 14px; }
+  .alert .meta { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 11px; }
+  .alert .lvl { font-weight: 800; letter-spacing: 1px; color: var(--yellow); }
+  .alert.high .lvl { color: var(--red); } .alert.info .lvl { color: var(--cyan); }
+  .alert .msg { margin-top: 3px; color: var(--text); word-break: break-word; }
+  .alert .msg b { color: #fff; font-weight: 600; }
+  .alert.approved { opacity: .4; }
+  .empty { padding: 28px 16px; color: var(--muted); text-align: center; }
+  .empty .big { font-size: 22px; color: var(--green); display: block; margin-bottom: 4px; }
+
+  /* ---------- bars ---------- */
+  .bars { padding: 8px 4px 12px; }
+  .row-bar { display: grid; grid-template-columns: 26px minmax(0, 1fr) 2fr 34px; gap: 10px; align-items: center; padding: 6px 12px; }
+  .row-bar .rank { color: var(--dim); font-size: 11px; }
+  .row-bar .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+  .row-bar .track { height: 8px; border-radius: 99px; background: rgba(255,255,255,.04); overflow: hidden; }
+  .row-bar .fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--green-d), var(--green));
+                   box-shadow: 0 0 12px rgba(34,224,107,.35); transition: width .6s ease; }
+  .bars.purple .fill { background: linear-gradient(90deg, var(--purple-d), var(--purple)); box-shadow: 0 0 12px rgba(164,107,255,.35); }
+  .row-bar .n { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* ---------- table ---------- */
+  .toolbar { display: flex; gap: 10px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .search { position: relative; flex: 1; min-width: 220px; }
+  .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: var(--muted); }
+  input { width: 100%; background: rgba(0,0,0,.35); color: var(--text); border: 1px solid var(--line2);
+          border-radius: 8px; padding: 8px 12px 8px 32px; font: inherit; outline: none; }
+  input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(164,107,255,.15); }
+  .count { color: var(--muted); font-size: 12px; }
+  .table-wrap { overflow: auto; max-height: 560px; }
   table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 6px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-  th { color: var(--muted); font-weight: normal; position: sticky; top: 0; background: var(--panel); }
-  td.app { color: var(--green); } td.flag { color: var(--red); } td.flag-warn { color: var(--yellow); }
-  .bars div { display: flex; gap: 8px; align-items: center; padding: 4px 14px; }
-  .bars .bar { height: 8px; background: var(--green); }
-  .bars .lbl { width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .empty { padding: 14px; color: var(--muted); }
-  footer { padding: 12px 24px 24px; color: var(--muted); font-size: 12px; }
+  th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase;
+       position: sticky; top: 0; background: #0f1216; cursor: pointer; user-select: none; z-index: 1; }
+  th:hover { color: var(--text); }
+  th .arr { color: var(--purple); margin-left: 4px; }
+  tbody tr:hover td { background: rgba(164,107,255,.06); }
+  .app { display: flex; align-items: center; gap: 10px; color: #fff; }
+  .av { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; font-weight: 800; font-size: 11px;
+        color: #0b0d11; flex: none; }
+  .host { color: var(--text); } .ip { color: var(--muted); }
+  .cc { display: inline-block; min-width: 30px; text-align: center; padding: 1px 6px; border-radius: 4px; margin-right: 8px;
+        font-size: 10.5px; font-weight: 800; color: var(--cyan); background: rgba(79,216,232,.08); border: 1px solid rgba(79,216,232,.25); }
+  .cc.lan { color: var(--muted); background: transparent; border-color: var(--line2); }
+  .flag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 10.5px; margin-right: 4px;
+          border: 1px solid rgba(255,210,87,.35); color: var(--yellow); background: rgba(255,210,87,.08); }
+  .flag.high { border-color: rgba(255,77,106,.4); color: var(--red); background: rgba(255,77,106,.1); }
+  .ok-dot { color: var(--green); }
+
+  footer { color: var(--dim); font-size: 11px; padding: 18px 0 0; display: flex; gap: 16px; flex-wrap: wrap; }
+  footer b { color: var(--muted); font-weight: 600; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
 </style>
 </head>
 <body>
-<header>
-  <h1>NETWATCH</h1><span class="sub">Bláthy On Top</span>
-  <span id="status" class="chip info">connecting…</span>
-  <span id="learning" class="chip warn" hidden>LEARNING MODE</span>
-  <span class="right" id="clock"></span>
-</header>
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#e9dcff" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div>
+      <div>
+        <h1>NET<span>WATCH</span></h1>
+        <div class="sub">Network traffic monitor · <b>Bláthy On Top</b></div>
+      </div>
+    </div>
+    <div class="status">
+      <span id="learning" class="pill learn" hidden><span class="dot"></span>Learning</span>
+      <span id="status" class="pill"><span class="dot"></span><span id="status-t">Connecting</span></span>
+      <span class="clock" id="clock"></span>
+    </div>
+  </header>
 
-<main>
-  <div class="tiles">
-    <div class="tile"><div class="k">Open connections</div><div class="v" id="t-open">–</div></div>
-    <div class="tile"><div class="k">Apps online</div><div class="v" id="t-apps">–</div></div>
-    <div class="tile"><div class="k">Countries</div><div class="v" id="t-countries">–</div></div>
-    <div class="tile"><div class="k">Upload</div><div class="v" id="t-up">–</div></div>
-    <div class="tile"><div class="k">Download</div><div class="v" id="t-down">–</div></div>
-    <div class="tile"><div class="k">Open alerts</div><div class="v" id="t-alerts">–</div></div>
+  <div class="grid">
+    <div class="card span-2"><div class="stat c-green"><div class="k">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h4l3-8 4 16 3-8h2"/></svg>Connections</div>
+      <div class="v" id="t-open">–</div><svg class="spark" id="s-open" preserveAspectRatio="none"></svg></div></div>
+    <div class="card span-2"><div class="stat c-purple"><div class="k">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Apps online</div>
+      <div class="v" id="t-apps">–</div><svg class="spark" id="s-apps" preserveAspectRatio="none"></svg></div></div>
+    <div class="card span-2"><div class="stat c-cyan"><div class="k">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18"/></svg>Countries</div>
+      <div class="v" id="t-countries">–</div><svg class="spark" id="s-countries" preserveAspectRatio="none"></svg></div></div>
+    <div class="card span-2"><div class="stat c-green"><div class="k">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Upload</div>
+      <div class="v" id="t-up">–</div><svg class="spark" id="s-up" preserveAspectRatio="none"></svg></div></div>
+    <div class="card span-2"><div class="stat c-cyan"><div class="k">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>Download</div>
+      <div class="v" id="t-down">–</div><svg class="spark" id="s-down" preserveAspectRatio="none"></svg></div></div>
+    <div class="card span-2"><div class="stat c-red"><div class="k">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l10 18H2L12 3z"/><path d="M12 10v4M12 17h.01"/></svg>Open alerts</div>
+      <div class="v" id="t-alerts">–</div><svg class="spark" id="s-alerts" preserveAspectRatio="none"></svg></div></div>
+
+    <div class="card span-8">
+      <div class="card-h"><h2>Where your computer connects</h2><span class="tag" id="map-tag"></span></div>
+      <div id="map"></div>
+      <div class="legend"><span><i style="background:var(--cyan)"></i>This computer</span>
+        <span><i style="background:var(--green)"></i>Normal</span><span><i style="background:var(--yellow)"></i>New app / country</span>
+        <span><i style="background:var(--red)"></i>Suspicious</span></div>
+    </div>
+    <div class="card span-4">
+      <div class="card-h"><h2>Alerts</h2><span class="badge zero" id="alert-badge">0</span></div>
+      <div id="alerts"></div>
+    </div>
+
+    <div class="card span-6"><div class="card-h"><h2>Top apps</h2><span class="tag">by open connections</span></div><div class="bars" id="apps"></div></div>
+    <div class="card span-6"><div class="card-h"><h2>Top countries</h2><span class="tag">by open connections</span></div><div class="bars purple" id="countries"></div></div>
+
+    <div class="card span-12">
+      <div class="card-h"><h2>Live connections</h2><span class="tag">updates every 2 seconds</span></div>
+      <div class="toolbar">
+        <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input id="filter" placeholder="Filter by app, host, IP, country or network…" autocomplete="off"></label>
+        <span class="count" id="count"></span>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr id="head"></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </div>
   </div>
 
-  <section><h2>Where your computer connects</h2><div id="map"></div></section>
-  <section><h2>Alerts</h2><div id="alerts"><div class="empty">No alerts yet.</div></div></section>
-
-  <section><h2>Top apps</h2><div class="bars" id="apps"></div></section>
-  <section><h2>Top countries</h2><div class="bars" id="countries"></div></section>
-
-  <section class="wide">
-    <h2>Live connections</h2>
-    <div class="toolbar"><input id="filter" placeholder="Filter by app, host, IP or country…" autocomplete="off"></div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>App</th><th>Remote host</th><th>IP</th><th>Port</th><th>Country</th><th>City</th><th>Network</th><th>Flags</th></tr></thead>
-      <tbody id="rows"></tbody>
-    </table></div>
-  </section>
-</main>
-<footer>Read-only local dashboard · only this computer is monitored · approve alerts in the NETWATCH console.</footer>
+  <footer><span><b>Local &amp; read-only</b> — only this computer can open this page.</span>
+    <span>Approve alerts in the NETWATCH console.</span><span id="ver"></span></footer>
+</div>
 
 <script>
 const $ = id => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-const fmtRate = b => b > 1048576 ? (b / 1048576).toFixed(1) + " MB/s" : (b / 1024).toFixed(1) + " KB/s";
-
-const map = L.map("map", { worldCopyJump: true, zoomControl: true, minZoom: 2 }).setView([30, 10], 2);
-L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
-  attribution: "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ", maxZoom: 12 }).addTo(map);
+const fmtRate = b => b >= 1048576 ? [(b / 1048576).toFixed(1), "MB/s"] : [(b / 1024).toFixed(1), "KB/s"];
+const ago = t => { const s = Math.max(0, Date.now() / 1000 - t); return s < 60 ? "just now" : s < 3600 ? Math.floor(s / 60) + " min ago" : Math.floor(s / 3600) + " h ago"; };
 const HIGH = f => f.startsWith("port") || f.startsWith("unusual");
 const severity = flags => flags.some(HIGH) ? 2 : (flags.length ? 1 : 0);
-const SEV_COLOR = ["#16c60c", "#f9f1a5", "#e74856"];
+const SEV_COLOR = ["#22e06b", "#ffd257", "#ff4d6a"];
+const PALETTE = ["#22e06b", "#4fd8e8", "#a46bff", "#ffd257", "#ff8a5b", "#5b8cff", "#ff6bd6", "#9be15d"];
+const hue = s => { let h = 0; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return PALETTE[h % PALETTE.length]; };
+
+/* ---------- sparklines (numbers only, so building SVG markup is safe) ---------- */
+const hist = {};
+function spark(id, value, color) {
+  const h = hist[id] = (hist[id] || []).concat([Number(value) || 0]).slice(-40);
+  const svg = $(id), w = 100, ht = 30, max = Math.max(...h, 1);
+  const pts = h.map((v, i) => [((i / Math.max(h.length - 1, 1)) * w).toFixed(2), (ht - 2 - (v / max) * (ht - 6)).toFixed(2)]);
+  const line = pts.map(p => p.join(",")).join(" ");
+  svg.setAttribute("viewBox", `0 0 ${w} ${ht}`);
+  svg.innerHTML = `<defs><linearGradient id="g${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".35"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>`
+    + `<polygon points="0,${ht} ${line} ${w},${ht}" fill="url(#g${id})"/>`
+    + `<polyline points="${line}" fill="none" stroke="${color}" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
+}
+
+/* ---------- map ---------- */
+const map = L.map("map", { worldCopyJump: true, minZoom: 2, zoomSnap: .5 }).setView([30, 10], 2);
+L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+  attribution: "Tiles &copy; Esri", maxZoom: 12 }).addTo(map);
 const layer = L.layerGroup().addTo(map);
-// Leaflet measures the map when it is created; re-measure once the layout has settled
-// and whenever the window size changes, otherwise only part of the map is drawn.
 window.addEventListener("load", () => map.invalidateSize());
-window.addEventListener("resize", () => map.invalidateSize());
-new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById("map"));
+new ResizeObserver(() => map.invalidateSize()).observe($("map"));
 let homeMarker = null, firstFit = true;
 
+function arc(a, b) {      // gentle curve between two points, bending north
+  const pts = [], [lat1, lon1] = a, [lat2, lon2] = b;
+  const dist = Math.hypot(lat2 - lat1, lon2 - lon1), bend = Math.min(dist * .18, 18);
+  for (let i = 0; i <= 32; i++) {
+    const t = i / 32, s = Math.sin(Math.PI * t);
+    pts.push([lat1 + (lat2 - lat1) * t + bend * s, lon1 + (lon2 - lon1) * t]);
+  }
+  return pts;
+}
+function dotIcon(color, size, pulse) {
+  const d = el("div", pulse ? "pulse" : "");
+  Object.assign(d.style, { width: size + "px", height: size + "px", borderRadius: "50%", color, background: color, boxShadow: `0 0 ${size}px ${color}` });
+  return L.divIcon({ className: "", iconSize: [size, size], html: d });
+}
 function drawMap(state) {
   layer.clearLayers();
   const home = state.home;
   if (home && !homeMarker) {
-    homeMarker = L.circleMarker([home.lat, home.lon], { radius: 7, color: "#61d6d6", fillOpacity: .9 })
-      .bindPopup("This computer (approx.)").addTo(map);
+    const box = el("div"); box.append(el("div", "pop-t", "This computer"), document.createTextNode(`approx. ${home.city || ""} ${home.country || ""}`));
+    homeMarker = L.marker([home.lat, home.lon], { icon: dotIcon("#4fd8e8", 12, true), zIndexOffset: 1000 }).bindPopup(box).addTo(map);
   }
   const places = {};
   for (const c of state.connections) {
     if (c.lat == null || c.lon == null) continue;
-    const k = c.lat.toFixed(2) + "," + c.lon.toFixed(2);
-    (places[k] = places[k] || { lat: c.lat, lon: c.lon, items: [], sev: 0 }).items.push(c);
-    places[k].sev = Math.max(places[k].sev, severity(c.flags));
+    const k = c.lat.toFixed(1) + "," + c.lon.toFixed(1);
+    const p = places[k] = places[k] || { lat: c.lat, lon: c.lon, items: [], sev: 0 };
+    p.items.push(c); p.sev = Math.max(p.sev, severity(c.flags));
   }
-  const pts = [];
-  for (const p of Object.values(places)) {
+  const pts = [], list = Object.values(places);
+  for (const p of list) {
     const color = SEV_COLOR[p.sev];
-    if (home) L.polyline([[home.lat, home.lon], [p.lat, p.lon]], { color, weight: 1, opacity: .35 }).addTo(layer);
-    const popup = el("div");
-    popup.append(el("b", null, `${p.items[0].city || ""} ${p.items[0].country}`));
-    const apps = [...new Set(p.items.map(i => i.app))];
-    for (const a of apps.slice(0, 8)) popup.append(el("div", null, a));
-    L.circleMarker([p.lat, p.lon], { radius: Math.min(4 + p.items.length, 14), color, fillOpacity: .7 })
-      .bindPopup(popup).addTo(layer);
+    if (home) L.polyline(arc([home.lat, home.lon], [p.lat, p.lon]), { color, weight: 1.2, opacity: .45, dashArray: p.sev ? "4 4" : null }).addTo(layer);
+    const size = Math.min(8 + p.items.length * 1.5, 18);
+    const box = el("div");
+    box.append(el("div", "pop-t", `${p.items[0].city || ""} ${p.items[0].country}`.trim()));
+    const apps = {}; for (const i of p.items) apps[i.app] = (apps[i.app] || 0) + 1;
+    for (const [a, n] of Object.entries(apps).slice(0, 8)) { const d = el("div"); d.append(el("span", "pop-a", a), document.createTextNode(` × ${n}`)); box.append(d); }
+    L.marker([p.lat, p.lon], { icon: dotIcon(color, size, p.sev > 0) }).bindPopup(box).addTo(layer);
     pts.push([p.lat, p.lon]);
   }
-  if (firstFit && pts.length) { map.invalidateSize(); map.fitBounds(pts.concat(home ? [[home.lat, home.lon]] : []), { padding: [30, 30], maxZoom: 4 }); firstFit = false; }
+  $("map-tag").textContent = `${list.length} locations`;
+  if (firstFit && pts.length) {
+    map.invalidateSize();
+    map.fitBounds(pts.concat(home ? [[home.lat, home.lon]] : []), { padding: [40, 40], maxZoom: 4 });
+    firstFit = false;
+  }
 }
 
+/* ---------- bars ---------- */
 function bars(target, pairs) {
   const box = $(target); box.replaceChildren();
   if (!pairs.length) { box.append(el("div", "empty", "Nothing yet.")); return; }
   const max = Math.max(...pairs.map(p => p[1]));
-  for (const [name, n] of pairs) {
-    const row = el("div"); row.append(el("span", "lbl", name));
-    const bar = el("span", "bar"); bar.style.width = (8 + 160 * n / max) + "px";
-    row.append(bar, el("span", null, n)); box.append(row);
-  }
+  pairs.forEach(([name, n], i) => {
+    const row = el("div", "row-bar");
+    const track = el("div", "track"), fill = el("div", "fill"); fill.style.width = (100 * n / max) + "%"; track.append(fill);
+    row.append(el("span", "rank", String(i + 1).padStart(2, "0")), el("span", "name", name), track, el("span", "n", n));
+    box.append(row);
+  });
 }
 
+/* ---------- alerts ---------- */
 function drawAlerts(alerts) {
   const box = $("alerts"); box.replaceChildren();
-  if (!alerts.length) { box.append(el("div", "empty", "No alerts yet.")); return; }
+  const open = alerts.filter(a => !a.approved).length;
+  $("alert-badge").textContent = open; $("alert-badge").className = "badge" + (open ? "" : " zero");
+  if (!alerts.length) {
+    const e = el("div", "empty"); e.append(el("span", "big", "✓"), document.createTextNode("No alerts. Everything looks normal."));
+    box.append(e); return;
+  }
   for (const a of alerts) {
-    const d = el("div", "alert" + (a.approved ? " approved" : ""));
-    d.append(el("div", "t", new Date(a.time * 1000).toLocaleTimeString() + (a.approved ? " · approved" : "")));
-    const lvl = el("span", "chip " + a.level.toLowerCase(), a.level);
-    const msg = el("div"); msg.append(lvl, document.createTextNode(" " + a.message));
-    d.append(msg); box.append(d);
+    const d = el("div", "alert " + a.level.toLowerCase() + (a.approved ? " approved" : ""));
+    const body = el("div", "body"), meta = el("div", "meta");
+    meta.append(el("span", "lvl", a.level), el("span", null, ago(a.time)), el("span", null, a.approved ? "· approved" : ""));
+    const msg = el("div", "msg"), parts = a.message.replace(" -> ", " → ").split(a.app);
+    parts.forEach((p, i) => { if (i) msg.append(el("b", null, a.app)); msg.append(document.createTextNode(p)); });
+    body.append(meta, msg); d.append(el("div", "bar"), body); box.append(d);
   }
 }
 
+/* ---------- table ---------- */
+const COLS = [["app", "App"], ["host", "Remote host"], ["ip", "IP"], ["port", "Port"], ["country", "Country"], ["city", "City"], ["org", "Network"], ["flags", "Status"]];
+let sortKey = "app", sortDir = 1;
+function drawHead() {
+  const tr = $("head"); tr.replaceChildren();
+  for (const [k, label] of COLS) {
+    const th = el("th", null, label);
+    if (k === sortKey) th.append(el("span", "arr", sortDir > 0 ? "▲" : "▼"));
+    th.onclick = () => { sortDir = k === sortKey ? -sortDir : 1; sortKey = k; drawHead(); last && drawRows(last.connections); };
+    tr.append(th);
+  }
+}
 function drawRows(conns) {
   const q = $("filter").value.trim().toLowerCase();
+  const rows = conns.filter(c => !q || [c.app, c.host, c.ip, c.country, c.city, c.org].join(" ").toLowerCase().includes(q));
+  rows.sort((a, b) => {
+    const va = sortKey === "flags" ? severity(a.flags) : a[sortKey], vb = sortKey === "flags" ? severity(b.flags) : b[sortKey];
+    return (typeof va === "number" ? va - vb : String(va || "").localeCompare(String(vb || ""))) * sortDir;
+  });
   const body = $("rows"); body.replaceChildren();
-  for (const c of conns) {
-    const hay = [c.app, c.host, c.ip, c.country, c.city, c.org].join(" ").toLowerCase();
-    if (q && !hay.includes(q)) continue;
+  for (const c of rows) {
     const tr = el("tr");
-    tr.append(el("td", "app", c.app), el("td", null, c.host || "–"), el("td", null, c.ip),
-              el("td", null, c.port), el("td", null, c.country), el("td", null, c.city || "–"),
-              el("td", null, c.org || "–"), el("td", ["", "flag-warn", "flag"][severity(c.flags)], c.flags.join(", ")));
+    const app = el("td"), wrap = el("div", "app"), av = el("span", "av", (c.app[0] || "?").toUpperCase());
+    av.style.background = hue(c.app); wrap.append(av, el("span", null, c.app)); app.append(wrap);
+    const country = el("td"); const lan = c.cc === "LAN";
+    country.append(el("span", "cc" + (lan ? " lan" : ""), lan ? "LAN" : (c.cc || "··")), document.createTextNode(lan ? "Local network" : c.country));
+    const status = el("td");
+    if (!c.flags.length) status.append(el("span", "ok-dot", "● ok"));
+    for (const f of c.flags) status.append(el("span", "flag" + (HIGH(f) ? " high" : ""), f));
+    tr.append(app, el("td", "host", c.host || "–"), el("td", "ip", c.ip), el("td", "ip", c.port), country,
+              el("td", null, c.city || "–"), el("td", "ip", c.org || "–"), status);
     body.append(tr);
   }
-  if (!body.children.length) { const tr = el("tr"); const td = el("td", "empty", "No matching connections."); td.colSpan = 8; tr.append(td); body.append(tr); }
+  if (!rows.length) { const tr = el("tr"), td = el("td", "empty", "No matching connections."); td.colSpan = COLS.length; tr.append(td); body.append(tr); }
+  $("count").textContent = `${rows.length} of ${conns.length}`;
 }
 
+/* ---------- refresh loop ---------- */
 let last = null;
+function setStatus(cls, text, live) {
+  $("status").className = "pill " + cls; $("status-t").textContent = text;
+  $("status").querySelector(".dot").className = "dot" + (live ? " live" : "");
+}
+function setRate(id, bytes) {
+  const [v, u] = fmtRate(bytes); $(id).replaceChildren(document.createTextNode(v), el("small", null, u));
+}
 async function refresh() {
   try {
     const r = await fetch("/api/state", { cache: "no-store" });
     const s = await r.json(); last = s;
-    $("status").textContent = s.monitoring ? "MONITORING" : "PAUSED";
-    $("status").className = "chip " + (s.monitoring ? "ok" : "warn");
+    setStatus(s.monitoring ? "ok" : "warn", s.monitoring ? "Monitoring" : "Paused", s.monitoring);
     $("learning").hidden = !s.learning;
     const st = s.stats;
-    $("t-open").textContent = st.open;
-    $("t-apps").textContent = new Set(s.connections.map(c => c.app)).size;
-    $("t-countries").textContent = new Set(s.connections.filter(c => c.cc && c.cc !== "LAN").map(c => c.country)).size;
-    $("t-up").textContent = fmtRate(st.rate_up);
-    $("t-down").textContent = fmtRate(st.rate_down);
-    $("t-alerts").textContent = s.alerts.filter(a => !a.approved).length;
-    $("clock").textContent = `v${s.version} · ${new Date(s.time * 1000).toLocaleTimeString()}`;
-    bars("apps", st.apps); bars("countries", st.countries);
+    const apps = new Set(s.connections.map(c => c.app)).size;
+    const countries = new Set(s.connections.filter(c => c.cc && c.cc !== "LAN").map(c => c.country)).size;
+    const open = s.alerts.filter(a => !a.approved).length;
+    $("t-open").textContent = st.open; $("t-apps").textContent = apps; $("t-countries").textContent = countries;
+    setRate("t-up", st.rate_up); setRate("t-down", st.rate_down);
+    $("t-alerts").textContent = open;
+    spark("s-open", st.open, "#22e06b"); spark("s-apps", apps, "#a46bff"); spark("s-countries", countries, "#4fd8e8");
+    spark("s-up", st.rate_up, "#22e06b"); spark("s-down", st.rate_down, "#4fd8e8"); spark("s-alerts", open, "#ff4d6a");
+    $("clock").textContent = new Date(s.time * 1000).toLocaleTimeString();
+    $("ver").textContent = `NETWATCH v${s.version}`;
+    bars("apps", st.apps); bars("countries", st.countries.filter(c => c[0] !== "Local network"));
     drawAlerts(s.alerts); drawRows(s.connections); drawMap(s);
   } catch (e) {
-    $("status").textContent = "OFFLINE - is NETWATCH running?"; $("status").className = "chip high";
+    setStatus("bad", "Offline — is NETWATCH running?", false);
   }
 }
 $("filter").addEventListener("input", () => last && drawRows(last.connections));
-refresh(); setInterval(refresh, 2000);
+drawHead(); refresh(); setInterval(refresh, 2000);
 </script>
 </body>
 </html>
