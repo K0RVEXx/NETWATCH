@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NETWATCH Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #0b0c0b; --panel: #121412; --line: #262a26; --text: #c9d1c9; --muted: #6f786f;
+    --green: #16c60c; --cyan: #61d6d6; --yellow: #f9f1a5; --red: #e74856;
+    --mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--mono); }
+  header { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+           padding: 16px 24px; border-bottom: 1px solid var(--line); }
+  header h1 { margin: 0; color: var(--green); font-size: 22px; letter-spacing: 4px; }
+  header .sub { color: var(--cyan); }
+  header .right { margin-left: auto; color: var(--muted); }
+  .chip { display: inline-block; padding: 1px 8px; border: 1px solid currentColor; border-radius: 3px; font-size: 12px; }
+  .ok { color: var(--green); } .warn { color: var(--yellow); } .high { color: var(--red); } .info { color: var(--cyan); }
+  main { display: grid; gap: 16px; padding: 16px 24px; grid-template-columns: 2fr 1fr; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 12px 16px; } }
+  .tiles { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; }
+  .tile .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+  .tile .v { color: var(--green); font-size: 22px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  section { background: var(--panel); border: 1px solid var(--line); min-width: 0; }
+  section h2 { margin: 0; padding: 10px 14px; font-size: 13px; color: var(--cyan);
+               border-bottom: 1px solid var(--line); letter-spacing: 2px; text-transform: uppercase; }
+  #map { height: 420px; background: #0e100e; }
+  .leaflet-container { font: 12px var(--mono); }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--panel); color: var(--text); }
+  #alerts { max-height: 420px; overflow: auto; }
+  .alert { padding: 8px 14px; border-bottom: 1px solid var(--line); }
+  .alert .t { color: var(--muted); font-size: 12px; }
+  .alert.approved { opacity: .45; }
+  .wide { grid-column: 1 / -1; }
+  .toolbar { display: flex; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  input { flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--line);
+          padding: 6px 10px; font: inherit; }
+  .table-wrap { overflow: auto; max-height: 520px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 6px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: normal; position: sticky; top: 0; background: var(--panel); }
+  td.app { color: var(--green); } td.flag { color: var(--red); } td.flag-warn { color: var(--yellow); }
+  .bars div { display: flex; gap: 8px; align-items: center; padding: 4px 14px; }
+  .bars .bar { height: 8px; background: var(--green); }
+  .bars .lbl { width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .empty { padding: 14px; color: var(--muted); }
+  footer { padding: 12px 24px 24px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>NETWATCH</h1><span class="sub">Bláthy On Top</span>
+  <span id="status" class="chip info">connecting…</span>
+  <span id="learning" class="chip warn" hidden>LEARNING MODE</span>
+  <span class="right" id="clock"></span>
+</header>
+
+<main>
+  <div class="tiles">
+    <div class="tile"><div class="k">Open connections</div><div class="v" id="t-open">–</div></div>
+    <div class="tile"><div class="k">Apps online</div><div class="v" id="t-apps">–</div></div>
+    <div class="tile"><div class="k">Countries</div><div class="v" id="t-countries">–</div></div>
+    <div class="tile"><div class="k">Upload</div><div class="v" id="t-up">–</div></div>
+    <div class="tile"><div class="k">Download</div><div class="v" id="t-down">–</div></div>
+    <div class="tile"><div class="k">Open alerts</div><div class="v" id="t-alerts">–</div></div>
+  </div>
+
+  <section><h2>Where your computer connects</h2><div id="map"></div></section>
+  <section><h2>Alerts</h2><div id="alerts"><div class="empty">No alerts yet.</div></div></section>
+
+  <section><h2>Top apps</h2><div class="bars" id="apps"></div></section>
+  <section><h2>Top countries</h2><div class="bars" id="countries"></div></section>
+
+  <section class="wide">
+    <h2>Live connections</h2>
+    <div class="toolbar"><input id="filter" placeholder="Filter by app, host, IP or country…" autocomplete="off"></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>App</th><th>Remote host</th><th>IP</th><th>Port</th><th>Country</th><th>City</th><th>Network</th><th>Flags</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+  </section>
+</main>
+<footer>Read-only local dashboard · only this computer is monitored · approve alerts in the NETWATCH console.</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const fmtRate = b => b > 1048576 ? (b / 1048576).toFixed(1) + " MB/s" : (b / 1024).toFixed(1) + " KB/s";
+
+const map = L.map("map", { worldCopyJump: true, zoomControl: true, minZoom: 2 }).setView([30, 10], 2);
+L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+  attribution: "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ", maxZoom: 12 }).addTo(map);
+const HIGH = f => f.startsWith("port") || f.startsWith("unusual");
+const severity = flags => flags.some(HIGH) ? 2 : (flags.length ? 1 : 0);
+const SEV_COLOR = ["#16c60c", "#f9f1a5", "#e74856"];
+const layer = L.layerGroup().addTo(map);
+// Leaflet measures the map when it is created; re-measure once the layout has settled
+// and whenever the window size changes, otherwise only part of the map is drawn.
+window.addEventListener("load", () => map.invalidateSize());
+window.addEventListener("resize", () => map.invalidateSize());
+new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById("map"));
+let homeMarker = null, firstFit = true;
+
+function drawMap(state) {
+  layer.clearLayers();
+  const home = state.home;
+  if (home && !homeMarker) {
+    homeMarker = L.circleMarker([home.lat, home.lon], { radius: 7, color: "#61d6d6", fillOpacity: .9 })
+      .bindPopup("This computer (approx.)").addTo(map);
+  }
+  const places = {};
+  for (const c of state.connections) {
+    if (c.lat == null || c.lon == null) continue;
+    const k = c.lat.toFixed(2) + "," + c.lon.toFixed(2);
+    (places[k] = places[k] || { lat: c.lat, lon: c.lon, items: [], sev: 0 }).items.push(c);
+    places[k].sev = Math.max(places[k].sev, severity(c.flags));
+  }
+  const pts = [];
+  for (const p of Object.values(places)) {
+    const color = SEV_COLOR[p.sev];
+    if (home) L.polyline([[home.lat, home.lon], [p.lat, p.lon]], { color, weight: 1, opacity: .35 }).addTo(layer);
+    const popup = el("div");
+    popup.append(el("b", null, `${p.items[0].city || ""} ${p.items[0].country}`));
+    const apps = [...new Set(p.items.map(i => i.app))];
+    for (const a of apps.slice(0, 8)) popup.append(el("div", null, a));
+    L.circleMarker([p.lat, p.lon], { radius: Math.min(4 + p.items.length, 14), color, fillOpacity: .7 })
+      .bindPopup(popup).addTo(layer);
+    pts.push([p.lat, p.lon]);
+  }
+  if (firstFit && pts.length) { map.invalidateSize(); map.fitBounds(pts.concat(home ? [[home.lat, home.lon]] : []), { padding: [30, 30], maxZoom: 4 }); firstFit = false; }
+}
+
+function bars(target, pairs) {
+  const box = $(target); box.replaceChildren();
+  if (!pairs.length) { box.append(el("div", "empty", "Nothing yet.")); return; }
+  const max = Math.max(...pairs.map(p => p[1]));
+  for (const [name, n] of pairs) {
+    const row = el("div"); row.append(el("span", "lbl", name));
+    const bar = el("span", "bar"); bar.style.width = (8 + 160 * n / max) + "px";
+    row.append(bar, el("span", null, n)); box.append(row);
+  }
+}
+
+function drawAlerts(alerts) {
+  const box = $("alerts"); box.replaceChildren();
+  if (!alerts.length) { box.append(el("div", "empty", "No alerts yet.")); return; }
+  for (const a of alerts) {
+    const d = el("div", "alert" + (a.approved ? " approved" : ""));
+    d.append(el("div", "t", new Date(a.time * 1000).toLocaleTimeString() + (a.approved ? " · approved" : "")));
+    const lvl = el("span", "chip " + a.level.toLowerCase(), a.level);
+    const msg = el("div"); msg.append(lvl, document.createTextNode(" " + a.message));
+    d.append(msg); box.append(d);
+  }
+}
+
+function drawRows(conns) {
+  const q = $("filter").value.trim().toLowerCase();
+  const body = $("rows"); body.replaceChildren();
+  for (const c of conns) {
+    const hay = [c.app, c.host, c.ip, c.country, c.city, c.org].join(" ").toLowerCase();
+    if (q && !hay.includes(q)) continue;
+    const tr = el("tr");
+    tr.append(el("td", "app", c.app), el("td", null, c.host || "–"), el("td", null, c.ip),
+              el("td", null, c.port), el("td", null, c.country), el("td", null, c.city || "–"),
+              el("td", null, c.org || "–"), el("td", ["", "flag-warn", "flag"][severity(c.flags)], c.flags.join(", ")));
+    body.append(tr);
+  }
+  if (!body.children.length) { const tr = el("tr"); const td = el("td", "empty", "No matching connections."); td.colSpan = 8; tr.append(td); body.append(tr); }
+}
+
+let last = null;
+async function refresh() {
+  try {
+    const r = await fetch("/api/state", { cache: "no-store" });
+    const s = await r.json(); last = s;
+    $("status").textContent = s.monitoring ? "MONITORING" : "PAUSED";
+    $("status").className = "chip " + (s.monitoring ? "ok" : "warn");
+    $("learning").hidden = !s.learning;
+    const st = s.stats;
+    $("t-open").textContent = st.open;
+    $("t-apps").textContent = new Set(s.connections.map(c => c.app)).size;
+    $("t-countries").textContent = new Set(s.connections.filter(c => c.cc && c.cc !== "LAN").map(c => c.country)).size;
+    $("t-up").textContent = fmtRate(st.rate_up);
+    $("t-down").textContent = fmtRate(st.rate_down);
+    $("t-alerts").textContent = s.alerts.filter(a => !a.approved).length;
+    $("clock").textContent = `v${s.version} · ${new Date(s.time * 1000).toLocaleTimeString()}`;
+    bars("apps", st.apps); bars("countries", st.countries);
+    drawAlerts(s.alerts); drawRows(s.connections); drawMap(s);
+  } catch (e) {
+    $("status").textContent = "OFFLINE - is NETWATCH running?"; $("status").className = "chip high";
+  }
+}
+$("filter").addEventListener("input", () => last && drawRows(last.connections));
+refresh(); setInterval(refresh, 2000);
+</script>
+</body>
+</html>

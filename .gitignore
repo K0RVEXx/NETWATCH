@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+*.pyc
+
+# Local runtime data (personal settings, connection history)
+app/netwatch_config.json
+app/geo_cache.json
+app/known.json
+app/logs/
