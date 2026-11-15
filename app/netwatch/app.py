@@ -5,7 +5,7 @@ import sys
 import time
 import webbrowser
 
-from . import NAME, SCHOOL, SLOGAN, TERMS_VERSION, VERSION, logger, ui
+from . import AUTHOR, AUTHOR_URL, NAME, SCHOOL, SLOGAN, TERMS_VERSION, VERSION, logger, ui, winshell
 from .alerts import Alerts
 from .config import Config
 from .dashboard import Dashboard
@@ -201,6 +201,9 @@ class App:
             ui.opt(6, "Alert: suspicious    ", onoff(s["alert_suspicious"]) + f" {GR}ports, folders{X}")
             ui.opt(7, "Dashboard port       ", f"{W}{s['dashboard_port']}{X}")
             ui.opt("L", "Learn normal activity again", f" {GR}({s['learning_minutes']} min){X}")
+            if winshell.SUPPORTED:
+                ui.opt("D", "Desktop shortcut     ",
+                       ui.tag("ON" if winshell.shortcut_exists() else "OFF") + f" {GR}NETWATCH icon{X}")
             ui.opt(0, "Back")
             print(f"\n      {GR}Settings are saved automatically.{X}")
             c = ui.choose().lower()
@@ -226,6 +229,9 @@ class App:
                     if not 1024 <= v <= 65535:
                         raise ValueError
                     s["dashboard_port"] = v
+                elif c == "d" and winshell.SUPPORTED:
+                    toggle_shortcut()
+                    time.sleep(1.5)
                 elif c == "l":
                     s["learning_until"] = time.time() + s["learning_minutes"] * 60
                     logger.info("Learning mode restarted")
@@ -260,6 +266,7 @@ class App:
     def about(self):
         ui.title("About NETWATCH")
         ui.kv("Name", NAME)
+        ui.kv("Made by", f"{C}{AUTHOR}{X}  {GR}{AUTHOR_URL}{X}")
         ui.kv("School", SCHOOL)
         ui.kv("Version", f"{VERSION}  (Python {sys.version.split()[0]})")
         ui.kv("License", f"{C}Open source - MIT License{X}")
@@ -400,13 +407,59 @@ def accept_terms(cfg):
             return False
 
 
+def setup_folder_icon():
+    try:
+        if winshell.apply_folder_icon():
+            logger.info("NETWATCH folder icon applied")
+    except OSError as ex:
+        logger.warn(f"Could not apply folder icon: {ex}")
+
+
+def toggle_shortcut():
+    try:
+        if winshell.shortcut_exists():
+            winshell.remove_shortcut()
+            logger.info("Desktop shortcut removed")
+            ui.ok("Desktop shortcut removed.")
+        else:
+            winshell.create_shortcut()
+            logger.info("Desktop shortcut created")
+            ui.ok("Desktop shortcut created with the NETWATCH icon.")
+    except OSError as ex:
+        logger.error(f"Desktop shortcut failed: {ex}")
+        ui.err(f"Could not change the desktop shortcut: {ex}")
+
+
+def offer_shortcut(cfg):
+    """Ask once, after the terms are accepted, whether to create a desktop shortcut."""
+    if cfg["shortcut_asked"] or not winshell.SUPPORTED or winshell.shortcut_exists():
+        return
+    ui.title("Desktop Shortcut")
+    for line in (
+        "Would you like a NETWATCH shortcut on your desktop?",
+        "",
+        "It starts NETWATCH with one double-click and shows the",
+        "NETWATCH icon. You can add or remove it any time in",
+        "Settings -> [D] Desktop shortcut.",
+    ):
+        print(f"      {G}{line}{X}")
+    print()
+    answer = ui.ask("Create desktop shortcut? (y/n)", "y").lower()
+    cfg["shortcut_asked"] = True
+    if answer.startswith("y"):
+        toggle_shortcut()
+        time.sleep(1.5)
+
+
 def main():
     ui.init()
     logger.info(f"NETWATCH {VERSION} started")
+    setup_folder_icon()
     app = App()
     atexit.register(app.shutdown)
     try:
         if accept_terms(app.cfg):
+            offer_shortcut(app.cfg)
             app.monitor.start()
             app.main_menu()
     except (KeyboardInterrupt, EOFError):

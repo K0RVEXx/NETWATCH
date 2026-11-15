@@ -16,5 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   upload and download speed
 - Terminal UI in the KØRVEX style, terms of use on first start, auto-saved settings,
   activity log
+- NETWATCH icon on the folder and an optional desktop shortcut with the icon
+- "Made by KØRVEX" in About, dashboard and README
 - Automated tests and GitHub Actions CI on Windows
 - Open source documentation: MIT License, README, BRANDING, DISCLAIMER, CONTRIBUTING, SECURITY

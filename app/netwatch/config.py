@@ -18,6 +18,7 @@ DEFAULTS = {
     "dashboard_port": 8765,    # local dashboard: http://127.0.0.1:<port>
     "terms_accepted": "",
     "terms_declined": False,
+    "shortcut_asked": False,   # desktop shortcut offer was shown once
 }
 
 

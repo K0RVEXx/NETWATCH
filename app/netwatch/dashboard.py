@@ -10,7 +10,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import NAME, VERSION, WEB_DIR, logger
+from . import AUTHOR, AUTHOR_URL, NAME, VERSION, WEB_DIR, logger
 
 
 class Dashboard:
@@ -30,6 +30,7 @@ class Dashboard:
     def state(self):
         return {
             "name": NAME, "version": VERSION, "time": time.time(),
+            "author": AUTHOR, "author_url": AUTHOR_URL,
             "monitoring": self.monitor.running,
             "learning": self.alerts.learning(),
             "home": self.geo.home,

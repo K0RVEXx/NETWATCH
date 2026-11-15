@@ -2,6 +2,8 @@
 
 <sub>Bláthy On Top</sub>
 
+Made by [KØRVEX](https://github.com/K0RVEXx)
+
 [![tests](https://github.com/K0RVEXx/NETWATCH/actions/workflows/tests.yml/badge.svg)](https://github.com/K0RVEXx/NETWATCH/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 ![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)
@@ -41,6 +43,7 @@ or unusual happens. It has a terminal interface and a live web dashboard with a 
   with app, destination, network and port, plus a route map, announcements, top apps and countries, upload and
   download speed — local and read-only
 - Terminal UI in the KØRVEX style, resize-aware, auto-saved settings, activity log
+- NETWATCH icon on its folder and an optional desktop shortcut with the icon
 - No packet capture, **no administrator rights** needed
 
 ## Requirements
@@ -81,6 +84,7 @@ python app/netwatch.py
 ```
 NETWATCH/
 ├── NETWATCH.bat          start here (double-click)
+├── desktop.ini           gives the folder the NETWATCH icon
 ├── README.md
 ├── LICENSE
 ├── SECURITY.md
@@ -89,6 +93,7 @@ NETWATCH/
 └── app/
     ├── netwatch.py       launcher, installs requirements automatically
     ├── requirements.txt
+    ├── assets/netwatch-folder.ico  NETWATCH icon
     ├── BRANDING.md · DISCLAIMER.md · CONTRIBUTING.md · CHANGELOG.md
     ├── web/index.html    dashboard page
     └── netwatch/
@@ -97,6 +102,7 @@ NETWATCH/
         ├── alerts.py     alert rules, learning mode, known apps
         ├── geo.py        location and host-name lookup with cache
         ├── dashboard.py  local read-only web server
+        ├── winshell.py   folder icon and desktop shortcut
         ├── config.py     auto-saved settings
         ├── logger.py     activity log
         └── ui.py         colors, layout, resize-aware input
@@ -116,6 +122,10 @@ The tests run offline and never touch your real settings or logs.
 Contributions are welcome — see [CONTRIBUTING.md](app/CONTRIBUTING.md).
 Security issues: please follow [SECURITY.md](SECURITY.md).
 Release history is in [CHANGELOG.md](app/CHANGELOG.md).
+
+## Author
+
+Made by [KØRVEX](https://github.com/K0RVEXx) — independent software studio.
 
 ## License
 
