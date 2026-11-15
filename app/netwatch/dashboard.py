@@ -66,6 +66,9 @@ class Dashboard:
                 if path in ("/", "/index.html"):
                     with open(os.path.join(WEB_DIR, "index.html"), "rb") as f:
                         return self._send(200, f.read(), "text/html; charset=utf-8")
+                if path == "/icon.png":
+                    with open(os.path.join(WEB_DIR, "icon.png"), "rb") as f:
+                        return self._send(200, f.read(), "image/png")
                 if path == "/api/state":
                     body = json.dumps(dash.state()).encode("utf-8")
                     return self._send(200, body, "application/json")

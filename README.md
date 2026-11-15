@@ -39,8 +39,8 @@ or unusual happens. It has a terminal interface and a live web dashboard with a 
 - **Learning mode** — the first minutes after the first start are used to learn what is
   normal on your computer, so you are not flooded with alerts
 - **Approve** alerts you recognise; NETWATCH remembers them
-- **Web dashboard** styled as an airport departures board: every connection is a departure
-  with app, destination, network and port, plus a route map, announcements, top apps and countries, upload and
+- **Web dashboard** in a clean security-tool style: status strip, live traffic chart,
+  connections table with filters, alerts, destination map and breakdowns by app and country, upload and
   download speed — local and read-only
 - Terminal UI in the KØRVEX style, resize-aware, auto-saved settings, activity log
 - NETWATCH icon on its folder and an optional desktop shortcut with the icon

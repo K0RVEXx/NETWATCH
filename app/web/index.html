@@ -3,297 +3,361 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NETWATCH Departures</title>
+<title>NETWATCH</title>
+<link rel="icon" href="/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
-    --hall: #24282e;      /* terminal hall wall */
-    --board: #16181c;     /* board housing */
-    --flap: #2b2f36;      /* flap face */
-    --amber: #f2b33d;     /* board lettering */
-    --paper: #ebe7de;     /* printed text */
-    --steel: #8d939b;     /* secondary text */
-    --signal: #e0563f;    /* check / suspicious */
-    --go: #7cc49a;        /* on time */
-    --board-font: "Barlow Condensed", "Arial Narrow", sans-serif;
-    --text-font: "Barlow", "Segoe UI", sans-serif;
+    --bg: #111a22;        /* steel blue-grey, taken from the icon's dark metal */
+    --panel: #172330;
+    --raised: #1d2b3a;
+    --rule: #263646;
+    --text: #d8e2ea;
+    --muted: #7f91a1;
+    --cyan: #2ec4dc;      /* the eye in the NETWATCH icon */
+    --warn: #e5ad45;
+    --bad: #ef5f5f;
+    --ok: #5cc28d;
+    --sans: "IBM Plex Sans", "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", Consolas, monospace;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
-  body { margin: 0; background: var(--hall); color: var(--paper); font: 16px/1.55 var(--text-font); }
-  a { color: var(--amber); }
-  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-  .page { max-width: 1320px; margin: 0 auto; padding: 28px 28px 40px; }
-  @media (max-width: 700px) { .page { padding: 18px 16px 28px; } }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans); }
+  a { color: var(--cyan); }
+  :focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .mono { font-family: var(--mono); }
+  .page { max-width: 1440px; margin: 0 auto; padding: 0 24px 32px; }
+  @media (max-width: 700px) { .page { padding: 0 14px 24px; } }
 
-  /* ---------- top line ---------- */
-  .top { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 18px; }
-  .brand { font: 700 40px/1 var(--board-font); letter-spacing: .5px; margin: 0; }
-  .brand .motto { color: var(--amber); margin-top: 2px; font-weight: 600; }
-  .brand small { display: block; font: 500 15px/1.3 var(--text-font); color: var(--steel); margin-top: 6px; letter-spacing: 0; }
-  .clock { margin-left: auto; text-align: right; }
-  .clock b { display: block; font: 600 40px/1 var(--board-font); color: var(--amber); font-variant-numeric: tabular-nums; }
-  .clock span { font-size: 14px; color: var(--steel); }
-  .clock span.off { color: var(--signal); }
+  /* ---------- title bar ---------- */
+  .titlebar { display: flex; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+  .titlebar img { width: 40px; height: 40px; }
+  .titlebar h1 { margin: 0; font: 600 20px/1.1 var(--sans); letter-spacing: .5px; }
+  .titlebar p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+  .titlebar p.motto { margin: 0; color: var(--cyan); font-size: 12.5px; }
+  .state { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+  .light { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+  .light.on { background: var(--ok); } .light.off { background: var(--bad); } .light.learn { background: var(--warn); }
 
-  /* ---------- departures board (the one loud element) ---------- */
-  .board { background: var(--board); padding: 14px 14px 10px; border-radius: 4px;
-           box-shadow: inset 0 0 0 1px #000, 0 2px 0 #3a3f47; }
-  .board-head, .flight { display: grid; grid-template-columns: 72px minmax(120px, 1.1fr) minmax(150px, 1.4fr) minmax(110px, 1fr) 74px 104px; gap: 6px; }
-  .board-head { padding: 0 2px 8px; font: 600 15px var(--board-font); color: var(--steel); }
-  .board-head button { all: unset; cursor: pointer; }
-  .board-head button:hover, .board-head button:focus-visible { color: var(--paper); }
-  .board-head .on { color: var(--amber); }
-  .rows { max-height: 616px; overflow-y: auto; }
-  .flight { margin-bottom: 6px; }
-  .cell { background: var(--flap); position: relative; padding: 6px 9px 5px; min-width: 0;
-          font: 600 21px/1.15 var(--board-font); color: var(--amber); text-transform: uppercase;
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .6px; }
-  .cell::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: rgba(0,0,0,.55); }
-  .cell small { display: block; font: 500 13px/1.2 var(--text-font); color: var(--steel); text-transform: none; letter-spacing: 0; margin-top: 2px;
-                overflow: hidden; text-overflow: ellipsis; }
-  .cell.num { text-align: center; font-variant-numeric: tabular-nums; }
-  .r-ok { color: var(--go); } .r-new { color: var(--amber); } .r-check { color: var(--paper); background: var(--signal); }
-  .flight.fresh .cell { animation: flip .5s cubic-bezier(.3,.7,.4,1) both; transform-origin: 50% 50%; }
-  .flight.fresh .cell:nth-child(2) { animation-delay: .05s } .flight.fresh .cell:nth-child(3) { animation-delay: .1s }
-  .flight.fresh .cell:nth-child(4) { animation-delay: .15s } .flight.fresh .cell:nth-child(5) { animation-delay: .2s }
-  .flight.fresh .cell:nth-child(6) { animation-delay: .25s }
-  @keyframes flip { 0% { transform: rotateX(90deg); filter: brightness(.4); } 100% { transform: rotateX(0); filter: none; } }
-  @media (prefers-reduced-motion: reduce) { .flight.fresh .cell { animation: none; } }
-  .board-foot { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; padding: 8px 2px 2px; color: var(--steel); font-size: 14px; }
-  .board-foot input { flex: 1; min-width: 200px; background: var(--flap); border: 0; color: var(--paper); font: 16px var(--text-font);
-                      padding: 8px 12px; border-radius: 2px; }
-  .board-foot input::placeholder { color: var(--steel); }
-  .none { padding: 26px 8px; color: var(--steel); font-size: 15px; }
+  /* ---------- status strip ---------- */
+  .strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border: 1px solid var(--rule); border-radius: 6px;
+           background: var(--panel); margin: 20px 0 16px; }
+  .strip div { padding: 12px 16px; border-left: 1px solid var(--rule); min-width: 0; }
+  .strip div:first-child { border-left: 0; }
+  .strip dt { color: var(--muted); font-size: 12.5px; }
+  .strip dd { margin: 2px 0 0; font: 500 22px/1.2 var(--mono); white-space: nowrap; }
+  .strip dd small { font-size: 13px; color: var(--muted); margin-left: 3px; }
+  .strip .alerting dd { color: var(--bad); }
+  @media (max-width: 900px) { .strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .strip div:nth-child(4) { border-left: 0; } .strip div:nth-child(n+4) { border-top: 1px solid var(--rule); } }
+  @media (max-width: 520px) { .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .strip div { border-left: 0; border-top: 1px solid var(--rule); } .strip div:nth-child(-n+2) { border-top: 0; }
+    .strip div:nth-child(even) { border-left: 1px solid var(--rule); } }
 
-  @media (max-width: 860px) {
-    .board-head { display: none; }
-    .flight { grid-template-columns: 1fr 1fr; }
-    .flight .c-time, .flight .c-net { display: none; }
-    .flight .c-dest { grid-column: 1 / -1; order: -1; }
-  }
+  /* ---------- panels ---------- */
+  .panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; min-width: 0; }
+  .panel > header { display: flex; align-items: baseline; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+  .panel h2 { margin: 0; font: 600 15px var(--sans); }
+  .panel header p { margin: 0; color: var(--muted); font-size: 13px; }
+  .panel header .right { margin-left: auto; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; }
+  .lower { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; }
+  @media (max-width: 1150px) { .layout { grid-template-columns: 1fr; } .lower { grid-template-columns: 1fr 1fr; } .lower .map-panel { grid-column: 1 / -1; } }
+  @media (max-width: 700px) { .lower { grid-template-columns: 1fr; } }
 
-  /* ---------- summary sentence ---------- */
-  .summary { margin: 22px 0 26px; max-width: 70ch; font-size: 18px; color: var(--paper); }
-  .summary b { font-weight: 600; color: var(--amber); font-variant-numeric: tabular-nums; }
+  /* ---------- traffic chart ---------- */
+  .traffic { margin-bottom: 16px; }
+  .chart-wrap { padding: 8px 12px 6px 4px; }
+  #chart { display: block; width: 100%; height: 150px; }
+  .key { display: flex; gap: 16px; font-size: 13px; color: var(--muted); }
+  .key i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 6px; }
 
-  /* ---------- lower half ---------- */
-  .lower { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 28px; align-items: start; }
-  @media (max-width: 960px) { .lower { grid-template-columns: 1fr; } }
-  h2 { font: 700 26px/1.1 var(--board-font); margin: 0 0 4px; }
-  .lead { margin: 0 0 12px; color: var(--steel); font-size: 15px; }
-  #map { height: 420px; border-radius: 4px; background: #1d2126; }
-  @media (max-width: 700px) { #map { height: 300px; } }
-  .leaflet-container { font: 14px var(--text-font); }
-  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--paper); color: #1d2126; border-radius: 3px; }
+  /* ---------- connections table ---------- */
+  .tools { padding: 10px 16px; border-bottom: 1px solid var(--rule); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .tools input[type=search] { flex: 1; min-width: 200px; background: var(--bg); border: 1px solid var(--rule); border-radius: 4px; color: var(--text);
+                 padding: 7px 10px; font: 14px var(--sans); }
+  .tools input[type=search]::placeholder { color: var(--muted); }
+  .tools label { color: var(--muted); font-size: 13px; display: flex; gap: 6px; align-items: center; cursor: pointer; }
+  .tools input[type=checkbox] { accent-color: var(--cyan); margin: 0; }
+  .table-wrap { overflow: auto; max-height: 560px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--rule); white-space: nowrap; vertical-align: top; }
+  th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-weight: 500; font-size: 13px; z-index: 1; }
+  th button { all: unset; cursor: pointer; } th button:hover, th button:focus-visible { color: var(--text); }
+  th .sorted { color: var(--text); }
+  tbody tr:hover td { background: var(--raised); }
+  td .sub { display: block; color: var(--muted); font-size: 12.5px; }
+  td.num { font-family: var(--mono); color: var(--muted); }
+  .cc { font: 500 12px var(--mono); color: var(--cyan); margin-right: 6px; }
+  .tag { display: inline-block; font-size: 12.5px; padding: 0 7px; border-radius: 3px; border: 1px solid; }
+  .tag.ok { color: var(--ok); border-color: rgba(92,194,141,.4); }
+  .tag.new { color: var(--warn); border-color: rgba(229,173,69,.45); }
+  .tag.bad { color: #fff; background: var(--bad); border-color: var(--bad); }
+  .empty { padding: 22px 16px; color: var(--muted); }
+
+  /* ---------- alerts ---------- */
+  #alerts { max-height: 640px; overflow: auto; }
+  .alert { display: grid; grid-template-columns: 10px 1fr; gap: 10px; padding: 11px 16px; border-bottom: 1px solid var(--rule); }
+  .alert .sev { width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; background: var(--warn); }
+  .alert.high .sev { background: var(--bad); }
+  .alert p { margin: 0; }
+  .alert time { color: var(--muted); font-size: 12.5px; }
+  .alert b { font-weight: 600; }
+  .alert.done { opacity: .45; }
+
+  /* ---------- map + breakdowns ---------- */
+  #map { height: 300px; border-radius: 0 0 6px 6px; background: #0e151c; }
+  .leaflet-container { font: 13px var(--sans); }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--raised); color: var(--text); border-radius: 4px; }
   .leaflet-popup-content { margin: 10px 12px; }
-  .pop-t { font: 700 18px var(--board-font); }
-  .leaflet-control-attribution { background: rgba(36,40,46,.85) !important; color: var(--steel) !important; }
-  .leaflet-control-attribution a { color: var(--steel) !important; }
+  .leaflet-control-attribution { background: rgba(17,26,34,.85) !important; color: var(--muted) !important; }
+  .leaflet-control-attribution a { color: var(--muted) !important; }
+  .leaflet-bar a { background: var(--raised) !important; color: var(--text) !important; border-color: var(--rule) !important; }
+  .breakdown { list-style: none; margin: 0; padding: 6px 0; }
+  .breakdown li { display: grid; grid-template-columns: minmax(0, 1fr) 90px 34px; gap: 10px; align-items: center; padding: 6px 16px; }
+  .breakdown span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .breakdown .bar { height: 6px; background: var(--raised); border-radius: 3px; overflow: hidden; }
+  .breakdown .bar i { display: block; height: 100%; background: var(--cyan); }
+  .breakdown em { font: 500 13px var(--mono); font-style: normal; text-align: right; color: var(--muted); }
 
-  .notice { padding: 12px 0 12px 14px; border-left: 3px solid var(--amber); margin-bottom: 10px; }
-  .notice.high { border-color: var(--signal); }
-  .notice.done { opacity: .45; }
-  .notice p { margin: 2px 0 0; }
-  .notice time { font-size: 13px; color: var(--steel); }
-  .notice b { font-weight: 600; }
-  .quiet { color: var(--steel); font-size: 15px; }
-
-  .tops { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 30px; }
-  @media (max-width: 700px) { .tops { grid-template-columns: 1fr; } }
-  .tally { list-style: none; margin: 0; padding: 0; }
-  .tally li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 6px 0; border-bottom: 1px solid #343941; }
-  .tally span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tally em { font-style: normal; color: var(--amber); font: 600 18px var(--board-font); font-variant-numeric: tabular-nums; }
-
-  footer { margin-top: 34px; color: var(--steel); font-size: 14px; max-width: 70ch; }
+  footer { margin-top: 24px; color: var(--muted); font-size: 13px; display: flex; gap: 18px; flex-wrap: wrap; }
 </style>
 </head>
 <body>
 <div class="page">
-  <div class="top">
-    <h1 class="brand">NETWATCH<small>Departures from this computer</small><small class="motto">Bláthy On Top</small></h1>
-    <div class="clock"><b id="clock">--:--</b><span id="state">Connecting to NETWATCH…</span></div>
+  <div class="titlebar">
+    <img src="/icon.png" alt="">
+    <div>
+      <h1>NETWATCH</h1>
+      <p>Network traffic monitor for this computer</p>
+      <p class="motto">Bláthy On Top</p>
+    </div>
+    <div class="state"><span class="light" id="light"></span><span id="state">Connecting…</span><span class="mono" id="clock"></span></div>
   </div>
 
-  <section class="board" aria-label="Live connections">
-    <div class="board-head" id="head" role="row"></div>
-    <div class="rows" id="rows"></div>
-    <div class="board-foot">
-      <input id="filter" type="search" placeholder="Find an app, place or address" autocomplete="off" aria-label="Filter connections">
-      <span id="count"></span>
-    </div>
+  <dl class="strip">
+    <div><dt>Open connections</dt><dd id="k-open">–</dd></div>
+    <div><dt>Apps online</dt><dd id="k-apps">–</dd></div>
+    <div><dt>Countries</dt><dd id="k-countries">–</dd></div>
+    <div><dt>Upload</dt><dd id="k-up">–</dd></div>
+    <div><dt>Download</dt><dd id="k-down">–</dd></div>
+    <div id="k-alerts-box"><dt>Open alerts</dt><dd id="k-alerts">–</dd></div>
+  </dl>
+
+  <section class="panel traffic">
+    <header><h2>Traffic</h2><p>Last 2 minutes</p>
+      <div class="key right"><span><i style="background:var(--cyan)"></i>Download</span><span><i style="background:var(--text)"></i>Upload</span></div></header>
+    <div class="chart-wrap"><svg id="chart" role="img" aria-label="Upload and download speed over the last 2 minutes"></svg></div>
   </section>
 
-  <p class="summary" id="summary">Waiting for the first scan.</p>
-
-  <div class="lower">
-    <section>
-      <h2>Route map</h2>
-      <p class="lead">Every place your computer is connected to right now. Red routes need a look.</p>
-      <div id="map"></div>
+  <div class="layout">
+    <section class="panel">
+      <header><h2>Connections</h2><p id="count"></p></header>
+      <div class="tools">
+        <input id="filter" type="search" placeholder="Filter by app, host, IP, country or network" aria-label="Filter connections" autocomplete="off">
+        <label><input type="checkbox" id="only-flagged"> Only flagged</label>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr id="head"></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
     </section>
-    <section>
-      <h2>Announcements</h2>
-      <p class="lead">New and unusual activity. Mark what you recognise as known in the NETWATCH window.</p>
+    <section class="panel">
+      <header><h2>Alerts</h2><p>Mark as known in the NETWATCH window.</p></header>
       <div id="alerts"></div>
     </section>
   </div>
 
-  <div class="tops">
-    <section><h2>Busiest apps</h2><p class="lead">Open connections per app.</p><ul class="tally" id="apps"></ul></section>
-    <section><h2>Most visited countries</h2><p class="lead">Open connections per country.</p><ul class="tally" id="countries"></ul></section>
+  <div class="lower">
+    <section class="panel map-panel"><header><h2>Destinations</h2><p id="map-note"></p></header><div id="map"></div></section>
+    <section class="panel"><header><h2>By app</h2><p>open connections</p></header><ul class="breakdown" id="apps"></ul></section>
+    <section class="panel"><header><h2>By country</h2><p>open connections</p></header><ul class="breakdown" id="countries"></ul></section>
   </div>
 
-  <footer>This page only works on this computer and never changes anything. NETWATCH looks up the location of remote addresses with ip-api.com; you can turn that off in its settings. <span id="ver"></span>
-    Made by <a href="https://github.com/K0RVEXx" target="_blank" rel="noopener noreferrer">KØRVEX</a>.</footer>
+  <footer>
+    <span>This page is local and read-only. Locations come from ip-api.com and can be turned off in NETWATCH settings.</span>
+    <span id="ver"></span>
+    <span>Made by <a href="https://github.com/K0RVEXx" target="_blank" rel="noopener noreferrer">KØRVEX</a></span>
+  </footer>
 </div>
 
 <script>
 const $ = id => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-const rate = b => b >= 1048576 ? (b / 1048576).toFixed(1) + " MB/s" : (b / 1024).toFixed(1) + " KB/s";
-const hhmm = t => new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const rate = b => b >= 1048576 ? [(b / 1048576).toFixed(1), "MB/s"] : [(b / 1024).toFixed(1), "KB/s"];
 const ago = t => { const s = Math.max(0, Date.now() / 1000 - t); return s < 60 ? "just now" : s < 3600 ? Math.floor(s / 60) + " min ago" : Math.floor(s / 3600) + " h ago"; };
 const HIGH = f => f.startsWith("port") || f.startsWith("unusual");
-const remark = flags => flags.some(HIGH) ? ["Check", "r-check"] : flags.length ? ["New", "r-new"] : ["On time", "r-ok"];
+const sev = c => c.flags.some(HIGH) ? 2 : c.flags.length ? 1 : 0;
 const appName = a => a.replace(/\.exe$/i, "");
 
-/* ---------- board ---------- */
-const COLS = [["since", "Time"], ["app", "App"], ["country", "Destination"], ["org", "Network"], ["port", "Gate"], ["flags", "Remarks"]];
-let sortKey = "since", sortDir = -1, seen = new Set(), first = true, last = null;
+/* ---------- traffic chart (SVG built from numbers only) ---------- */
+const samples = [];
+function drawChart() {
+  const svg = $("chart"), W = svg.clientWidth || 800, H = 150, padL = 64, padB = 18, padT = 8;
+  const max = Math.max(1024, ...samples.map(s => Math.max(s.up, s.down))) * 1.15;
+  const x = i => padL + (W - padL - 6) * (i / 59), y = v => padT + (H - padT - padB) * (1 - v / max);
+  const line = key => samples.map((s, i) => `${x(i + 60 - samples.length).toFixed(1)},${y(s[key]).toFixed(1)}`).join(" ");
+  let g = "";
+  for (let k = 0; k <= 3; k++) {
+    const v = max * k / 3, yy = y(v).toFixed(1), [n, u] = rate(v);
+    g += `<line x1="${padL}" x2="${W - 6}" y1="${yy}" y2="${yy}" stroke="#263646"/>`
+       + `<text x="${padL - 8}" y="${(+yy + 4).toFixed(1)}" text-anchor="end" fill="#7f91a1" font-family="IBM Plex Mono, monospace" font-size="11">${n} ${u}</text>`;
+  }
+  g += `<text x="${padL}" y="${H - 3}" fill="#7f91a1" font-size="11" font-family="IBM Plex Sans, sans-serif">2 min ago</text>`
+     + `<text x="${W - 6}" y="${H - 3}" text-anchor="end" fill="#7f91a1" font-size="11" font-family="IBM Plex Sans, sans-serif">now</text>`;
+  if (samples.length > 1) {
+    g += `<polyline points="${line("down")}" fill="none" stroke="#2ec4dc" stroke-width="2"/>`
+       + `<polyline points="${line("up")}" fill="none" stroke="#d8e2ea" stroke-width="1.5"/>`;
+  }
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = g;
+}
+window.addEventListener("resize", drawChart);
+
+/* ---------- connections table ---------- */
+const COLS = [["app", "App"], ["host", "Remote host"], ["port", "Port"], ["country", "Location"], ["org", "Network"], ["sev", "Status"]];
+let sortKey = "sev", sortDir = -1, last = null;
 function drawHead() {
-  const head = $("head"); head.replaceChildren();
+  const tr = $("head"); tr.replaceChildren();
   for (const [k, label] of COLS) {
-    const b = el("button", k === sortKey ? "on" : "", label + (k === sortKey ? (sortDir > 0 ? " ↑" : " ↓") : ""));
-    b.onclick = () => { sortDir = k === sortKey ? -sortDir : (k === "since" ? -1 : 1); sortKey = k; drawHead(); last && drawBoard(last.connections); };
-    head.append(b);
+    const th = el("th"), b = el("button", k === sortKey ? "sorted" : "", label + (k === sortKey ? (sortDir > 0 ? " ▴" : " ▾") : ""));
+    b.onclick = () => { sortDir = k === sortKey ? -sortDir : (k === "sev" ? -1 : 1); sortKey = k; drawHead(); last && drawRows(last.connections); };
+    th.append(b); tr.append(th);
   }
 }
-const sevOf = c => c.flags.some(HIGH) ? 2 : c.flags.length ? 1 : 0;
 function group(conns) {
   const g = {};
   for (const c of conns) {
     const k = [c.app, c.ip, c.port].join("|");
     if (!g[k]) g[k] = Object.assign({}, c, { count: 0 });
-    g[k].count++; g[k].since = Math.min(g[k].since, c.since);
+    g[k].count++;
     if (c.flags.length > g[k].flags.length) g[k].flags = c.flags;
   }
-  return Object.values(g);
+  return Object.values(g).map(c => Object.assign(c, { sev: sev(c) }));
 }
-function drawBoard(all) {
-  const conns = group(all);
-  const q = $("filter").value.trim().toLowerCase();
-  const rows = conns.filter(c => !q || [c.app, c.host, c.ip, c.country, c.city, c.org].join(" ").toLowerCase().includes(q));
+function drawRows(all) {
+  const conns = group(all), q = $("filter").value.trim().toLowerCase(), onlyFlagged = $("only-flagged").checked;
+  const rows = conns.filter(c => (!onlyFlagged || c.sev) && (!q || [c.app, c.host, c.ip, c.country, c.city, c.org].join(" ").toLowerCase().includes(q)));
   rows.sort((a, b) => {
-    const va = sortKey === "flags" ? sevOf(a) : a[sortKey], vb = sortKey === "flags" ? sevOf(b) : b[sortKey];
-    return (typeof va === "number" ? va - vb : String(va || "").localeCompare(String(vb || ""))) * sortDir;
+    const va = a[sortKey], vb = b[sortKey];
+    const d = typeof va === "number" ? va - vb : String(va || "").localeCompare(String(vb || ""));
+    return (d || a.app.localeCompare(b.app)) * sortDir;
   });
-  const box = $("rows"); box.replaceChildren();
+  const body = $("rows"); body.replaceChildren();
   for (const c of rows) {
-    const key = [c.app, c.ip, c.port].join("|");
-    const row = el("div", "flight" + (!first && !seen.has(key) ? " fresh" : ""));
-    seen.add(key);
-    const lan = c.cc === "LAN";
-    const dest = el("div", "cell c-dest", lan ? "Local network" : (c.city || c.country));
-    dest.append(el("small", null, (lan ? "" : (c.city ? c.country + " — " : "")) + (c.host || c.ip)));
-    const app = el("div", "cell", appName(c.app)); app.title = c.exe || c.app;
-    if (c.count > 1) app.append(el("small", null, `${c.count} connections`));
-    const net = el("div", "cell c-net", c.org || (lan ? "Home" : "—"));
-    const [r, rc] = remark(c.flags);
-    const rem = el("div", "cell " + rc, r); if (c.flags.length) rem.title = c.flags.join(", ");
-    row.append(el("div", "cell num c-time", hhmm(c.since)), app, dest, net, el("div", "cell num", c.port), rem);
-    box.append(row);
+    const tr = el("tr"), lan = c.cc === "LAN";
+    const app = el("td", null, appName(c.app)); app.title = c.exe || c.app;
+    if (c.count > 1) app.append(el("span", "sub", `${c.count} connections`));
+    const host = el("td", null, c.host || c.ip); host.append(el("span", "sub mono", c.host ? c.ip : ""));
+    const loc = el("td");
+    if (lan) loc.append("Local network");
+    else { loc.append(el("span", "cc", c.cc || "--"), document.createTextNode(c.city ? `${c.city}, ${c.country}` : c.country)); }
+    const status = el("td");
+    if (!c.sev) status.append(el("span", "tag ok", "Known"));
+    for (const f of c.flags) status.append(el("span", "tag " + (HIGH(f) ? "bad" : "new"), f[0].toUpperCase() + f.slice(1)));
+    tr.append(app, host, el("td", "num", c.port), loc, el("td", null, c.org || (lan ? "Home network" : "–")), status);
+    body.append(tr);
   }
-  if (!rows.length) box.append(el("div", "none", q ? "No departures match that search." : "No connections right now."));
-  $("count").textContent = q ? `${rows.length} of ${conns.length} shown` : `${conns.length} destinations, ${all.length} connections`;
-  first = false;
+  if (!rows.length) { const tr = el("tr"), td = el("td", "empty", q || onlyFlagged ? "No connections match." : "No open connections."); td.colSpan = COLS.length; tr.append(td); body.append(tr); }
+  $("count").textContent = `${rows.length} of ${conns.length} destinations`;
 }
 
-/* ---------- route map ---------- */
-const map = L.map("map", { worldCopyJump: true, minZoom: 2, zoomSnap: .5, scrollWheelZoom: false }).setView([35, 10], 2);
+/* ---------- alerts ---------- */
+function drawAlerts(alerts) {
+  const box = $("alerts"); box.replaceChildren();
+  if (!alerts.length) { box.append(el("p", "empty", "No alerts. Everything this computer talks to is known.")); return; }
+  for (const a of alerts.slice(0, 30)) {
+    const d = el("div", "alert" + (a.level === "HIGH" ? " high" : "") + (a.approved ? " done" : ""));
+    const body = el("div"), p = el("p"), parts = a.message.replace(" -> ", " → ").split(a.app);
+    parts.forEach((part, i) => { if (i) p.append(el("b", null, appName(a.app))); p.append(document.createTextNode(part)); });
+    body.append(p, el("time", null, ago(a.time) + (a.approved ? ", marked as known" : "")));
+    d.append(el("span", "sev"), body); box.append(d);
+  }
+}
+
+/* ---------- map ---------- */
+const map = L.map("map", { worldCopyJump: true, minZoom: 2, zoomSnap: .5, scrollWheelZoom: false }).setView([30, 10], 2);
 L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
   attribution: "Tiles &copy; Esri", maxZoom: 12 }).addTo(map);
-const routes = L.layerGroup().addTo(map);
-window.addEventListener("load", () => map.invalidateSize());
-new ResizeObserver(() => map.invalidateSize()).observe($("map"));
-let homeShown = false, fitted = false;
-function arc(a, b) {
-  const pts = [], d = Math.hypot(b[0] - a[0], b[1] - a[1]), bend = Math.min(d * .2, 20);
-  for (let i = 0; i <= 40; i++) { const t = i / 40; pts.push([a[0] + (b[0] - a[0]) * t + bend * Math.sin(Math.PI * t), a[1] + (b[1] - a[1]) * t]); }
-  return pts;
+const dots = L.layerGroup().addTo(map);
+let homeShown = false, userMoved = false, bounds = null;
+// Keep the view framed on all destinations until the user pans or zooms by hand.
+function frame() {
+  map.invalidateSize();
+  if (userMoved || !bounds || map.getSize().x < 50) return;
+  map.fitBounds(bounds, { padding: [24, 24], maxZoom: 4, animate: false });
 }
+["mousedown", "touchstart", "wheel", "keydown"].forEach(ev => $("map").addEventListener(ev, () => { userMoved = true; }, { passive: true }));
+new ResizeObserver(frame).observe($("map"));
 function drawMap(s) {
-  routes.clearLayers();
+  dots.clearLayers();
   const home = s.home;
   if (home && !homeShown) {
-    L.circleMarker([home.lat, home.lon], { radius: 6, color: "#ebe7de", weight: 2, fillColor: "#24282e", fillOpacity: 1 })
-      .bindPopup(el("div", "pop-t", "This computer")).addTo(map);
+    L.circleMarker([home.lat, home.lon], { radius: 5, color: "#d8e2ea", weight: 2, fillColor: "#111a22", fillOpacity: 1 })
+      .bindPopup("This computer").addTo(map);
     homeShown = true;
   }
   const places = {};
   for (const c of s.connections) {
     if (c.lat == null) continue;
     const k = c.lat.toFixed(1) + "," + c.lon.toFixed(1);
-    const p = places[k] = places[k] || { lat: c.lat, lon: c.lon, apps: {}, sev: 0, name: c.city || c.country };
-    p.apps[appName(c.app)] = (p.apps[appName(c.app)] || 0) + 1; p.sev = Math.max(p.sev, sevOf(c));
+    const p = places[k] = places[k] || { lat: c.lat, lon: c.lon, apps: new Set(), sev: 0, name: c.city ? `${c.city}, ${c.country}` : c.country };
+    p.apps.add(appName(c.app)); p.sev = Math.max(p.sev, sev(c));
   }
-  const pts = [];
-  for (const p of Object.values(places)) {
-    const color = p.sev === 2 ? "#e0563f" : "#f2b33d";
-    if (home) L.polyline(arc([home.lat, home.lon], [p.lat, p.lon]), { color, weight: p.sev === 2 ? 2.5 : 1.4, opacity: p.sev === 2 ? .95 : .6 }).addTo(routes);
-    const pop = el("div"); pop.append(el("div", "pop-t", p.name));
-    for (const [a, n] of Object.entries(p.apps).slice(0, 8)) pop.append(el("div", null, n > 1 ? `${a} (${n})` : a));
-    L.circleMarker([p.lat, p.lon], { radius: 4, color, weight: 0, fillColor: color, fillOpacity: 1 }).bindPopup(pop).addTo(routes);
-    pts.push([p.lat, p.lon]);
+  const pts = Object.values(places);
+  for (const p of pts) {
+    const color = p.sev === 2 ? "#ef5f5f" : "#2ec4dc";
+    if (home) L.polyline([[home.lat, home.lon], [p.lat, p.lon]], { color, weight: 1, opacity: p.sev === 2 ? .9 : .35 }).addTo(dots);
+    const pop = el("div"); pop.append(el("b", null, p.name), el("div", null, [...p.apps].join(", ")));
+    L.circleMarker([p.lat, p.lon], { radius: 4, weight: 0, fillColor: color, fillOpacity: 1 }).bindPopup(pop).addTo(dots);
   }
-  if (!fitted && pts.length) { map.invalidateSize(); map.fitBounds(pts.concat(home ? [[home.lat, home.lon]] : []), { padding: [30, 30], maxZoom: 4 }); fitted = true; }
+  $("map-note").textContent = `${pts.length} places`;
+  if (pts.length) {
+    const nb = L.latLngBounds(pts.map(p => [p.lat, p.lon]).concat(home ? [[home.lat, home.lon]] : []));
+    if (!bounds || !bounds.equals(nb)) { bounds = nb; requestAnimationFrame(frame); }
+  }
 }
 
-/* ---------- announcements ---------- */
-function drawAlerts(alerts) {
-  const box = $("alerts"); box.replaceChildren();
-  if (!alerts.length) { box.append(el("p", "quiet", "Nothing to report. Your computer is only talking to places it already knows.")); return; }
-  for (const a of alerts.slice(0, 12)) {
-    const n = el("div", "notice" + (a.level === "HIGH" ? " high" : "") + (a.approved ? " done" : ""));
-    const t = el("time", null, ago(a.time) + (a.approved ? ", marked as known" : "")); t.dateTime = new Date(a.time * 1000).toISOString();
-    const p = el("p"), parts = a.message.replace(" -> ", " to ").split(a.app);
-    parts.forEach((part, i) => { if (i) p.append(el("b", null, appName(a.app))); p.append(document.createTextNode(part)); });
-    n.append(t, p); box.append(n);
-  }
-}
-function tally(id, pairs, rename) {
+function breakdown(id, pairs, rename) {
   const ul = $(id); ul.replaceChildren();
-  if (!pairs.length) { ul.append(el("li", "quiet", "Nothing yet.")); return; }
-  for (const [name, n] of pairs) { const li = el("li"); li.append(el("span", null, rename ? rename(name) : name), el("em", null, n)); ul.append(li); }
+  if (!pairs.length) { ul.append(el("li", "empty", "Nothing yet.")); return; }
+  const max = Math.max(...pairs.map(p => p[1]));
+  for (const [name, n] of pairs) {
+    const li = el("li"), bar = el("span", "bar"), fill = el("i"); fill.style.width = (100 * n / max) + "%"; bar.append(fill);
+    li.append(el("span", null, rename ? rename(name) : name), bar, el("em", null, n)); ul.append(li);
+  }
 }
 
 /* ---------- refresh ---------- */
+function setRate(id, b) { const [n, u] = rate(b); $(id).replaceChildren(document.createTextNode(n), el("small", null, u)); }
 async function refresh() {
   try {
     const s = await (await fetch("/api/state", { cache: "no-store" })).json(); last = s;
-    $("clock").textContent = new Date(s.time * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    $("state").className = ""; $("state").textContent = s.monitoring ? (s.learning ? "Watching live, still learning what is normal" : "Watching live") : "Paused in NETWATCH";
-    const st = s.stats, apps = new Set(s.connections.map(c => c.app)).size;
+    const st = s.stats;
+    $("light").className = "light " + (!s.monitoring ? "" : s.learning ? "learn" : "on");
+    $("state").textContent = !s.monitoring ? "Paused" : s.learning ? "Monitoring, learning what is normal" : "Monitoring";
+    $("clock").textContent = new Date(s.time * 1000).toLocaleTimeString();
+    const apps = new Set(s.connections.map(c => c.app)).size;
     const countries = new Set(s.connections.filter(c => c.cc && c.cc !== "LAN").map(c => c.country)).size;
     const open = s.alerts.filter(a => !a.approved).length;
-    const sum = $("summary"); sum.replaceChildren();
-    const b = t => el("b", null, t);
-    sum.append(b(st.open), ` departures right now from `, b(apps), ` apps to `, b(countries), countries === 1 ? " country. " : " countries. ",
-               `Upload `, b(rate(st.rate_up)), `, download `, b(rate(st.rate_down)), ". ",
-               open ? el("span", null, `${open} announcement${open > 1 ? "s" : ""} waiting.`) : "No open announcements.");
-    $("ver").textContent = `NETWATCH ${s.version}.`;
-    drawBoard(s.connections); drawMap(s); drawAlerts(s.alerts);
-    tally("apps", st.apps, appName); tally("countries", st.countries.filter(c => c[0] !== "Local network"));
+    $("k-open").textContent = st.open; $("k-apps").textContent = apps; $("k-countries").textContent = countries;
+    setRate("k-up", st.rate_up); setRate("k-down", st.rate_down);
+    $("k-alerts").textContent = open; $("k-alerts-box").className = open ? "alerting" : "";
+    samples.push({ up: st.rate_up, down: st.rate_down }); if (samples.length > 60) samples.shift();
+    drawChart(); drawRows(s.connections); drawAlerts(s.alerts); drawMap(s);
+    breakdown("apps", st.apps, appName); breakdown("countries", st.countries.filter(c => c[0] !== "Local network"));
+    $("ver").textContent = `NETWATCH ${s.version}`;
   } catch (e) {
-    $("state").className = "off"; $("state").textContent = "NETWATCH is not running. Start it and choose Open Dashboard.";
+    $("light").className = "light off"; $("state").textContent = "NETWATCH is not running. Start it and choose Open Dashboard.";
   }
 }
-$("filter").addEventListener("input", () => last && drawBoard(last.connections));
+$("filter").addEventListener("input", () => last && drawRows(last.connections));
+$("only-flagged").addEventListener("change", () => last && drawRows(last.connections));
 drawHead(); refresh(); setInterval(refresh, 2000);
 </script>
 </body>

@@ -45,6 +45,10 @@ def test_dashboard_serves_page_and_state(dash):
     assert state["alerts"][0]["kind"] == "new_app"
 
 
+def test_dashboard_serves_icon(dash):
+    assert get(dash.url + "icon.png").read()[:4] == b"PNG"
+
+
 def test_dashboard_listens_on_localhost_only(dash):
     assert dash.server.server_address[0] == "127.0.0.1"
 
