@@ -3,427 +3,296 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NETWATCH Dashboard</title>
+<title>NETWATCH Departures</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
-    --bg: #07080a; --bg2: #0c0e12; --panel: rgba(16, 19, 24, .82); --line: #1e242c; --line2: #2a323c;
-    --text: #cfd6dd; --muted: #6b7682; --dim: #3b444e;
-    --green: #22e06b; --green-d: #0f7a3a; --cyan: #4fd8e8; --purple: #a46bff; --purple-d: #5b2fb3;
-    --yellow: #ffd257; --red: #ff4d6a;
-    --mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
-    --r: 10px;
+    --hall: #24282e;      /* terminal hall wall */
+    --board: #16181c;     /* board housing */
+    --flap: #2b2f36;      /* flap face */
+    --amber: #f2b33d;     /* board lettering */
+    --paper: #ebe7de;     /* printed text */
+    --steel: #8d939b;     /* secondary text */
+    --signal: #e0563f;    /* check / suspicious */
+    --go: #7cc49a;        /* on time */
+    --board-font: "Barlow Condensed", "Arial Narrow", sans-serif;
+    --text-font: "Barlow", "Segoe UI", sans-serif;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
-  html, body { height: 100%; }
-  body {
-    margin: 0; color: var(--text); font: 13px/1.5 var(--mono);
-    background:
-      radial-gradient(1200px 600px at 85% -10%, rgba(164, 107, 255, .14), transparent 60%),
-      radial-gradient(900px 500px at -10% 110%, rgba(34, 224, 107, .08), transparent 60%),
-      linear-gradient(var(--bg), var(--bg2));
-    background-attachment: fixed;
+  body { margin: 0; background: var(--hall); color: var(--paper); font: 16px/1.55 var(--text-font); }
+  a { color: var(--amber); }
+  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .page { max-width: 1320px; margin: 0 auto; padding: 28px 28px 40px; }
+  @media (max-width: 700px) { .page { padding: 18px 16px 28px; } }
+
+  /* ---------- top line ---------- */
+  .top { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 18px; }
+  .brand { font: 700 40px/1 var(--board-font); letter-spacing: .5px; margin: 0; }
+  .brand .motto { color: var(--amber); margin-top: 2px; font-weight: 600; }
+  .brand small { display: block; font: 500 15px/1.3 var(--text-font); color: var(--steel); margin-top: 6px; letter-spacing: 0; }
+  .clock { margin-left: auto; text-align: right; }
+  .clock b { display: block; font: 600 40px/1 var(--board-font); color: var(--amber); font-variant-numeric: tabular-nums; }
+  .clock span { font-size: 14px; color: var(--steel); }
+  .clock span.off { color: var(--signal); }
+
+  /* ---------- departures board (the one loud element) ---------- */
+  .board { background: var(--board); padding: 14px 14px 10px; border-radius: 4px;
+           box-shadow: inset 0 0 0 1px #000, 0 2px 0 #3a3f47; }
+  .board-head, .flight { display: grid; grid-template-columns: 72px minmax(120px, 1.1fr) minmax(150px, 1.4fr) minmax(110px, 1fr) 74px 104px; gap: 6px; }
+  .board-head { padding: 0 2px 8px; font: 600 15px var(--board-font); color: var(--steel); }
+  .board-head button { all: unset; cursor: pointer; }
+  .board-head button:hover, .board-head button:focus-visible { color: var(--paper); }
+  .board-head .on { color: var(--amber); }
+  .rows { max-height: 616px; overflow-y: auto; }
+  .flight { margin-bottom: 6px; }
+  .cell { background: var(--flap); position: relative; padding: 6px 9px 5px; min-width: 0;
+          font: 600 21px/1.15 var(--board-font); color: var(--amber); text-transform: uppercase;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .6px; }
+  .cell::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: rgba(0,0,0,.55); }
+  .cell small { display: block; font: 500 13px/1.2 var(--text-font); color: var(--steel); text-transform: none; letter-spacing: 0; margin-top: 2px;
+                overflow: hidden; text-overflow: ellipsis; }
+  .cell.num { text-align: center; font-variant-numeric: tabular-nums; }
+  .r-ok { color: var(--go); } .r-new { color: var(--amber); } .r-check { color: var(--paper); background: var(--signal); }
+  .flight.fresh .cell { animation: flip .5s cubic-bezier(.3,.7,.4,1) both; transform-origin: 50% 50%; }
+  .flight.fresh .cell:nth-child(2) { animation-delay: .05s } .flight.fresh .cell:nth-child(3) { animation-delay: .1s }
+  .flight.fresh .cell:nth-child(4) { animation-delay: .15s } .flight.fresh .cell:nth-child(5) { animation-delay: .2s }
+  .flight.fresh .cell:nth-child(6) { animation-delay: .25s }
+  @keyframes flip { 0% { transform: rotateX(90deg); filter: brightness(.4); } 100% { transform: rotateX(0); filter: none; } }
+  @media (prefers-reduced-motion: reduce) { .flight.fresh .cell { animation: none; } }
+  .board-foot { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; padding: 8px 2px 2px; color: var(--steel); font-size: 14px; }
+  .board-foot input { flex: 1; min-width: 200px; background: var(--flap); border: 0; color: var(--paper); font: 16px var(--text-font);
+                      padding: 8px 12px; border-radius: 2px; }
+  .board-foot input::placeholder { color: var(--steel); }
+  .none { padding: 26px 8px; color: var(--steel); font-size: 15px; }
+
+  @media (max-width: 860px) {
+    .board-head { display: none; }
+    .flight { grid-template-columns: 1fr 1fr; }
+    .flight .c-time, .flight .c-net { display: none; }
+    .flight .c-dest { grid-column: 1 / -1; order: -1; }
   }
-  body::before {           /* faint grid */
-    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-    background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
-    background-size: 32px 32px;
-    mask-image: linear-gradient(to bottom, black, transparent 80%);
-  }
-  .wrap { position: relative; z-index: 1; max-width: 1500px; margin: 0 auto; padding: 0 24px 32px; }
-  @media (max-width: 700px) { .wrap { padding: 0 16px 24px; } }
 
-  /* ---------- header ---------- */
-  header { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 22px 0 18px; }
-  .logo { display: flex; align-items: center; gap: 14px; }
-  .mark { width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center;
-          background: linear-gradient(135deg, var(--purple-d), #1b1030); border: 1px solid #6c46c4;
-          box-shadow: 0 0 24px rgba(164, 107, 255, .35); }
-  .mark svg { width: 24px; height: 24px; }
-  h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 6px; color: #fff; }
-  h1 span { color: var(--green); }
-  .sub { color: var(--muted); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; }
-  .sub b { color: var(--cyan); font-weight: 600; letter-spacing: 0; text-transform: none; }
-  .status { margin-left: auto; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
-          border: 1px solid var(--line2); background: rgba(255,255,255,.02); font-size: 11px;
-          letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; position: relative; }
-  .dot.live::after { content: ""; position: absolute; inset: -4px; border-radius: 50%;
-                     border: 2px solid currentColor; animation: ping 1.6s ease-out infinite; }
-  @keyframes ping { from { transform: scale(.6); opacity: .9; } to { transform: scale(1.8); opacity: 0; } }
-  .pill.ok { color: var(--green); border-color: rgba(34,224,107,.35); }
-  .pill.warn { color: var(--yellow); border-color: rgba(255,210,87,.35); }
-  .pill.bad { color: var(--red); border-color: rgba(255,77,106,.4); }
-  .pill.learn { color: var(--purple); border-color: rgba(164,107,255,.4); }
-  .clock { color: var(--muted); font-size: 12px; }
+  /* ---------- summary sentence ---------- */
+  .summary { margin: 22px 0 26px; max-width: 70ch; font-size: 18px; color: var(--paper); }
+  .summary b { font-weight: 600; color: var(--amber); font-variant-numeric: tabular-nums; }
 
-  /* ---------- cards ---------- */
-  .grid { display: grid; gap: 16px; grid-template-columns: repeat(12, 1fr); }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
-          backdrop-filter: blur(6px); min-width: 0; overflow: hidden;
-          box-shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 12px 30px rgba(0,0,0,.35); }
-  .card-h { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
-  .card-h h2 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; color: var(--text); }
-  .card-h .tag { margin-left: auto; color: var(--muted); font-size: 11px; }
-  .badge { min-width: 22px; padding: 1px 7px; border-radius: 999px; font-size: 11px; text-align: center;
-           background: rgba(255,77,106,.15); color: var(--red); border: 1px solid rgba(255,77,106,.35); }
-  .badge.zero { background: rgba(34,224,107,.1); color: var(--green); border-color: rgba(34,224,107,.3); }
+  /* ---------- lower half ---------- */
+  .lower { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+  @media (max-width: 960px) { .lower { grid-template-columns: 1fr; } }
+  h2 { font: 700 26px/1.1 var(--board-font); margin: 0 0 4px; }
+  .lead { margin: 0 0 12px; color: var(--steel); font-size: 15px; }
+  #map { height: 420px; border-radius: 4px; background: #1d2126; }
+  @media (max-width: 700px) { #map { height: 300px; } }
+  .leaflet-container { font: 14px var(--text-font); }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--paper); color: #1d2126; border-radius: 3px; }
+  .leaflet-popup-content { margin: 10px 12px; }
+  .pop-t { font: 700 18px var(--board-font); }
+  .leaflet-control-attribution { background: rgba(36,40,46,.85) !important; color: var(--steel) !important; }
+  .leaflet-control-attribution a { color: var(--steel) !important; }
 
-  .span-12 { grid-column: span 12; } .span-8 { grid-column: span 8; } .span-4 { grid-column: span 4; }
-  .span-6 { grid-column: span 6; } .span-2 { grid-column: span 2; }
-  @media (max-width: 1100px) { .span-8, .span-4 { grid-column: span 12; } .span-2 { grid-column: span 4; } }
-  @media (max-width: 700px) { .span-6 { grid-column: span 12; } .span-2 { grid-column: span 6; }
-                              .grid { gap: 12px; } .stat .v { font-size: 22px; } #map { height: 340px; } }
+  .notice { padding: 12px 0 12px 14px; border-left: 3px solid var(--amber); margin-bottom: 10px; }
+  .notice.high { border-color: var(--signal); }
+  .notice.done { opacity: .45; }
+  .notice p { margin: 2px 0 0; }
+  .notice time { font-size: 13px; color: var(--steel); }
+  .notice b { font-weight: 600; }
+  .quiet { color: var(--steel); font-size: 15px; }
 
-  /* ---------- stat tiles ---------- */
-  .stat { padding: 14px 16px 10px; position: relative; }
-  .stat .k { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 10.5px;
-             letter-spacing: 1.8px; text-transform: uppercase; }
-  .stat .k svg { width: 14px; height: 14px; opacity: .9; }
-  .stat .v { font-size: 26px; font-weight: 800; color: #fff; margin-top: 6px; font-variant-numeric: tabular-nums; }
-  .stat .v small { font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 4px; }
-  .stat .spark { display: block; width: 100%; height: 30px; margin-top: 4px; }
-  .stat.c-green .k svg { color: var(--green); } .stat.c-cyan .k svg { color: var(--cyan); }
-  .stat.c-purple .k svg { color: var(--purple); } .stat.c-red .k svg { color: var(--red); }
+  .tops { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 30px; }
+  @media (max-width: 700px) { .tops { grid-template-columns: 1fr; } }
+  .tally { list-style: none; margin: 0; padding: 0; }
+  .tally li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 6px 0; border-bottom: 1px solid #343941; }
+  .tally span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tally em { font-style: normal; color: var(--amber); font: 600 18px var(--board-font); font-variant-numeric: tabular-nums; }
 
-  /* ---------- map ---------- */
-  #map { height: 460px; background: #0b0d11; }
-  .leaflet-container { font: 12px var(--mono); background: #0b0d11; }
-  .leaflet-control-zoom a { background: var(--bg2) !important; color: var(--text) !important; border-color: var(--line2) !important; }
-  .leaflet-control-attribution { background: rgba(7,8,10,.7) !important; color: var(--dim) !important; }
-  .leaflet-control-attribution a { color: var(--muted) !important; }
-  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #11141a; color: var(--text);
-          border: 1px solid var(--line2); box-shadow: 0 10px 30px rgba(0,0,0,.6); }
-  .leaflet-popup-content { margin: 12px 14px; }
-  .pop-t { color: #fff; font-weight: 600; margin-bottom: 6px; }
-  .pop-a { color: var(--green); }
-  .pulse { position: relative; }
-  .pulse::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid currentColor;
-                  animation: ping 2s ease-out infinite; }
-  .legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 10px 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
-  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
-
-  /* ---------- alerts ---------- */
-  #alerts { max-height: 504px; overflow: auto; }
-  .alert { display: grid; grid-template-columns: 4px 1fr; border-bottom: 1px solid var(--line); }
-  .alert .bar { background: var(--yellow); }
-  .alert.high .bar { background: var(--red); } .alert.info .bar { background: var(--cyan); }
-  .alert .body { padding: 10px 14px; }
-  .alert .meta { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 11px; }
-  .alert .lvl { font-weight: 800; letter-spacing: 1px; color: var(--yellow); }
-  .alert.high .lvl { color: var(--red); } .alert.info .lvl { color: var(--cyan); }
-  .alert .msg { margin-top: 3px; color: var(--text); word-break: break-word; }
-  .alert .msg b { color: #fff; font-weight: 600; }
-  .alert.approved { opacity: .4; }
-  .empty { padding: 28px 16px; color: var(--muted); text-align: center; }
-  .empty .big { font-size: 22px; color: var(--green); display: block; margin-bottom: 4px; }
-
-  /* ---------- bars ---------- */
-  .bars { padding: 8px 4px 12px; }
-  .row-bar { display: grid; grid-template-columns: 26px minmax(0, 1fr) 2fr 34px; gap: 10px; align-items: center; padding: 6px 12px; }
-  .row-bar .rank { color: var(--dim); font-size: 11px; }
-  .row-bar .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
-  .row-bar .track { height: 8px; border-radius: 99px; background: rgba(255,255,255,.04); overflow: hidden; }
-  .row-bar .fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--green-d), var(--green));
-                   box-shadow: 0 0 12px rgba(34,224,107,.35); transition: width .6s ease; }
-  .bars.purple .fill { background: linear-gradient(90deg, var(--purple-d), var(--purple)); box-shadow: 0 0 12px rgba(164,107,255,.35); }
-  .row-bar .n { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
-
-  /* ---------- table ---------- */
-  .toolbar { display: flex; gap: 10px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-  .search { position: relative; flex: 1; min-width: 220px; }
-  .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: var(--muted); }
-  input { width: 100%; background: rgba(0,0,0,.35); color: var(--text); border: 1px solid var(--line2);
-          border-radius: 8px; padding: 8px 12px 8px 32px; font: inherit; outline: none; }
-  input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(164,107,255,.15); }
-  .count { color: var(--muted); font-size: 12px; }
-  .table-wrap { overflow: auto; max-height: 560px; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-  th { color: var(--muted); font-weight: 600; font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase;
-       position: sticky; top: 0; background: #0f1216; cursor: pointer; user-select: none; z-index: 1; }
-  th:hover { color: var(--text); }
-  th .arr { color: var(--purple); margin-left: 4px; }
-  tbody tr:hover td { background: rgba(164,107,255,.06); }
-  .app { display: flex; align-items: center; gap: 10px; color: #fff; }
-  .av { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; font-weight: 800; font-size: 11px;
-        color: #0b0d11; flex: none; }
-  .host { color: var(--text); } .ip { color: var(--muted); }
-  .cc { display: inline-block; min-width: 30px; text-align: center; padding: 1px 6px; border-radius: 4px; margin-right: 8px;
-        font-size: 10.5px; font-weight: 800; color: var(--cyan); background: rgba(79,216,232,.08); border: 1px solid rgba(79,216,232,.25); }
-  .cc.lan { color: var(--muted); background: transparent; border-color: var(--line2); }
-  .flag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 10.5px; margin-right: 4px;
-          border: 1px solid rgba(255,210,87,.35); color: var(--yellow); background: rgba(255,210,87,.08); }
-  .flag.high { border-color: rgba(255,77,106,.4); color: var(--red); background: rgba(255,77,106,.1); }
-  .ok-dot { color: var(--green); }
-
-  footer { color: var(--dim); font-size: 11px; padding: 18px 0 0; display: flex; gap: 16px; flex-wrap: wrap; }
-  footer b { color: var(--muted); font-weight: 600; }
-  ::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 10px; }
-  ::-webkit-scrollbar-track { background: transparent; }
+  footer { margin-top: 34px; color: var(--steel); font-size: 14px; max-width: 70ch; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div class="logo">
-      <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#e9dcff" stroke-width="2" stroke-linecap="round">
-        <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div>
-      <div>
-        <h1>NET<span>WATCH</span></h1>
-        <div class="sub">Network traffic monitor · <b>Bláthy On Top</b></div>
-      </div>
-    </div>
-    <div class="status">
-      <span id="learning" class="pill learn" hidden><span class="dot"></span>Learning</span>
-      <span id="status" class="pill"><span class="dot"></span><span id="status-t">Connecting</span></span>
-      <span class="clock" id="clock"></span>
-    </div>
-  </header>
-
-  <div class="grid">
-    <div class="card span-2"><div class="stat c-green"><div class="k">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h4l3-8 4 16 3-8h2"/></svg>Connections</div>
-      <div class="v" id="t-open">–</div><svg class="spark" id="s-open" preserveAspectRatio="none"></svg></div></div>
-    <div class="card span-2"><div class="stat c-purple"><div class="k">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Apps online</div>
-      <div class="v" id="t-apps">–</div><svg class="spark" id="s-apps" preserveAspectRatio="none"></svg></div></div>
-    <div class="card span-2"><div class="stat c-cyan"><div class="k">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18"/></svg>Countries</div>
-      <div class="v" id="t-countries">–</div><svg class="spark" id="s-countries" preserveAspectRatio="none"></svg></div></div>
-    <div class="card span-2"><div class="stat c-green"><div class="k">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Upload</div>
-      <div class="v" id="t-up">–</div><svg class="spark" id="s-up" preserveAspectRatio="none"></svg></div></div>
-    <div class="card span-2"><div class="stat c-cyan"><div class="k">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>Download</div>
-      <div class="v" id="t-down">–</div><svg class="spark" id="s-down" preserveAspectRatio="none"></svg></div></div>
-    <div class="card span-2"><div class="stat c-red"><div class="k">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l10 18H2L12 3z"/><path d="M12 10v4M12 17h.01"/></svg>Open alerts</div>
-      <div class="v" id="t-alerts">–</div><svg class="spark" id="s-alerts" preserveAspectRatio="none"></svg></div></div>
-
-    <div class="card span-8">
-      <div class="card-h"><h2>Where your computer connects</h2><span class="tag" id="map-tag"></span></div>
-      <div id="map"></div>
-      <div class="legend"><span><i style="background:var(--cyan)"></i>This computer</span>
-        <span><i style="background:var(--green)"></i>Normal</span><span><i style="background:var(--yellow)"></i>New app / country</span>
-        <span><i style="background:var(--red)"></i>Suspicious</span></div>
-    </div>
-    <div class="card span-4">
-      <div class="card-h"><h2>Alerts</h2><span class="badge zero" id="alert-badge">0</span></div>
-      <div id="alerts"></div>
-    </div>
-
-    <div class="card span-6"><div class="card-h"><h2>Top apps</h2><span class="tag">by open connections</span></div><div class="bars" id="apps"></div></div>
-    <div class="card span-6"><div class="card-h"><h2>Top countries</h2><span class="tag">by open connections</span></div><div class="bars purple" id="countries"></div></div>
-
-    <div class="card span-12">
-      <div class="card-h"><h2>Live connections</h2><span class="tag">updates every 2 seconds</span></div>
-      <div class="toolbar">
-        <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-          <input id="filter" placeholder="Filter by app, host, IP, country or network…" autocomplete="off"></label>
-        <span class="count" id="count"></span>
-      </div>
-      <div class="table-wrap"><table>
-        <thead><tr id="head"></tr></thead>
-        <tbody id="rows"></tbody>
-      </table></div>
-    </div>
+<div class="page">
+  <div class="top">
+    <h1 class="brand">NETWATCH<small>Departures from this computer</small><small class="motto">Bláthy On Top</small></h1>
+    <div class="clock"><b id="clock">--:--</b><span id="state">Connecting to NETWATCH…</span></div>
   </div>
 
-  <footer><span><b>Local &amp; read-only</b> — only this computer can open this page.</span>
-    <span>Approve alerts in the NETWATCH console.</span><span id="ver"></span></footer>
+  <section class="board" aria-label="Live connections">
+    <div class="board-head" id="head" role="row"></div>
+    <div class="rows" id="rows"></div>
+    <div class="board-foot">
+      <input id="filter" type="search" placeholder="Find an app, place or address" autocomplete="off" aria-label="Filter connections">
+      <span id="count"></span>
+    </div>
+  </section>
+
+  <p class="summary" id="summary">Waiting for the first scan.</p>
+
+  <div class="lower">
+    <section>
+      <h2>Route map</h2>
+      <p class="lead">Every place your computer is connected to right now. Red routes need a look.</p>
+      <div id="map"></div>
+    </section>
+    <section>
+      <h2>Announcements</h2>
+      <p class="lead">New and unusual activity. Mark what you recognise as known in the NETWATCH window.</p>
+      <div id="alerts"></div>
+    </section>
+  </div>
+
+  <div class="tops">
+    <section><h2>Busiest apps</h2><p class="lead">Open connections per app.</p><ul class="tally" id="apps"></ul></section>
+    <section><h2>Most visited countries</h2><p class="lead">Open connections per country.</p><ul class="tally" id="countries"></ul></section>
+  </div>
+
+  <footer>This page only works on this computer and never changes anything. NETWATCH looks up the location of remote addresses with ip-api.com; you can turn that off in its settings. <span id="ver"></span></footer>
 </div>
 
 <script>
 const $ = id => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-const fmtRate = b => b >= 1048576 ? [(b / 1048576).toFixed(1), "MB/s"] : [(b / 1024).toFixed(1), "KB/s"];
+const rate = b => b >= 1048576 ? (b / 1048576).toFixed(1) + " MB/s" : (b / 1024).toFixed(1) + " KB/s";
+const hhmm = t => new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 const ago = t => { const s = Math.max(0, Date.now() / 1000 - t); return s < 60 ? "just now" : s < 3600 ? Math.floor(s / 60) + " min ago" : Math.floor(s / 3600) + " h ago"; };
 const HIGH = f => f.startsWith("port") || f.startsWith("unusual");
-const severity = flags => flags.some(HIGH) ? 2 : (flags.length ? 1 : 0);
-const SEV_COLOR = ["#22e06b", "#ffd257", "#ff4d6a"];
-const PALETTE = ["#22e06b", "#4fd8e8", "#a46bff", "#ffd257", "#ff8a5b", "#5b8cff", "#ff6bd6", "#9be15d"];
-const hue = s => { let h = 0; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return PALETTE[h % PALETTE.length]; };
+const remark = flags => flags.some(HIGH) ? ["Check", "r-check"] : flags.length ? ["New", "r-new"] : ["On time", "r-ok"];
+const appName = a => a.replace(/\.exe$/i, "");
 
-/* ---------- sparklines (numbers only, so building SVG markup is safe) ---------- */
-const hist = {};
-function spark(id, value, color) {
-  const h = hist[id] = (hist[id] || []).concat([Number(value) || 0]).slice(-40);
-  const svg = $(id), w = 100, ht = 30, max = Math.max(...h, 1);
-  const pts = h.map((v, i) => [((i / Math.max(h.length - 1, 1)) * w).toFixed(2), (ht - 2 - (v / max) * (ht - 6)).toFixed(2)]);
-  const line = pts.map(p => p.join(",")).join(" ");
-  svg.setAttribute("viewBox", `0 0 ${w} ${ht}`);
-  svg.innerHTML = `<defs><linearGradient id="g${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".35"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>`
-    + `<polygon points="0,${ht} ${line} ${w},${ht}" fill="url(#g${id})"/>`
-    + `<polyline points="${line}" fill="none" stroke="${color}" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
-}
-
-/* ---------- map ---------- */
-const map = L.map("map", { worldCopyJump: true, minZoom: 2, zoomSnap: .5 }).setView([30, 10], 2);
-L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
-  attribution: "Tiles &copy; Esri", maxZoom: 12 }).addTo(map);
-const layer = L.layerGroup().addTo(map);
-window.addEventListener("load", () => map.invalidateSize());
-new ResizeObserver(() => map.invalidateSize()).observe($("map"));
-let homeMarker = null, firstFit = true;
-
-function arc(a, b) {      // gentle curve between two points, bending north
-  const pts = [], [lat1, lon1] = a, [lat2, lon2] = b;
-  const dist = Math.hypot(lat2 - lat1, lon2 - lon1), bend = Math.min(dist * .18, 18);
-  for (let i = 0; i <= 32; i++) {
-    const t = i / 32, s = Math.sin(Math.PI * t);
-    pts.push([lat1 + (lat2 - lat1) * t + bend * s, lon1 + (lon2 - lon1) * t]);
-  }
-  return pts;
-}
-function dotIcon(color, size, pulse) {
-  const d = el("div", pulse ? "pulse" : "");
-  Object.assign(d.style, { width: size + "px", height: size + "px", borderRadius: "50%", color, background: color, boxShadow: `0 0 ${size}px ${color}` });
-  return L.divIcon({ className: "", iconSize: [size, size], html: d });
-}
-function drawMap(state) {
-  layer.clearLayers();
-  const home = state.home;
-  if (home && !homeMarker) {
-    const box = el("div"); box.append(el("div", "pop-t", "This computer"), document.createTextNode(`approx. ${home.city || ""} ${home.country || ""}`));
-    homeMarker = L.marker([home.lat, home.lon], { icon: dotIcon("#4fd8e8", 12, true), zIndexOffset: 1000 }).bindPopup(box).addTo(map);
-  }
-  const places = {};
-  for (const c of state.connections) {
-    if (c.lat == null || c.lon == null) continue;
-    const k = c.lat.toFixed(1) + "," + c.lon.toFixed(1);
-    const p = places[k] = places[k] || { lat: c.lat, lon: c.lon, items: [], sev: 0 };
-    p.items.push(c); p.sev = Math.max(p.sev, severity(c.flags));
-  }
-  const pts = [], list = Object.values(places);
-  for (const p of list) {
-    const color = SEV_COLOR[p.sev];
-    if (home) L.polyline(arc([home.lat, home.lon], [p.lat, p.lon]), { color, weight: 1.2, opacity: .45, dashArray: p.sev ? "4 4" : null }).addTo(layer);
-    const size = Math.min(8 + p.items.length * 1.5, 18);
-    const box = el("div");
-    box.append(el("div", "pop-t", `${p.items[0].city || ""} ${p.items[0].country}`.trim()));
-    const apps = {}; for (const i of p.items) apps[i.app] = (apps[i.app] || 0) + 1;
-    for (const [a, n] of Object.entries(apps).slice(0, 8)) { const d = el("div"); d.append(el("span", "pop-a", a), document.createTextNode(` × ${n}`)); box.append(d); }
-    L.marker([p.lat, p.lon], { icon: dotIcon(color, size, p.sev > 0) }).bindPopup(box).addTo(layer);
-    pts.push([p.lat, p.lon]);
-  }
-  $("map-tag").textContent = `${list.length} locations`;
-  if (firstFit && pts.length) {
-    map.invalidateSize();
-    map.fitBounds(pts.concat(home ? [[home.lat, home.lon]] : []), { padding: [40, 40], maxZoom: 4 });
-    firstFit = false;
-  }
-}
-
-/* ---------- bars ---------- */
-function bars(target, pairs) {
-  const box = $(target); box.replaceChildren();
-  if (!pairs.length) { box.append(el("div", "empty", "Nothing yet.")); return; }
-  const max = Math.max(...pairs.map(p => p[1]));
-  pairs.forEach(([name, n], i) => {
-    const row = el("div", "row-bar");
-    const track = el("div", "track"), fill = el("div", "fill"); fill.style.width = (100 * n / max) + "%"; track.append(fill);
-    row.append(el("span", "rank", String(i + 1).padStart(2, "0")), el("span", "name", name), track, el("span", "n", n));
-    box.append(row);
-  });
-}
-
-/* ---------- alerts ---------- */
-function drawAlerts(alerts) {
-  const box = $("alerts"); box.replaceChildren();
-  const open = alerts.filter(a => !a.approved).length;
-  $("alert-badge").textContent = open; $("alert-badge").className = "badge" + (open ? "" : " zero");
-  if (!alerts.length) {
-    const e = el("div", "empty"); e.append(el("span", "big", "✓"), document.createTextNode("No alerts. Everything looks normal."));
-    box.append(e); return;
-  }
-  for (const a of alerts) {
-    const d = el("div", "alert " + a.level.toLowerCase() + (a.approved ? " approved" : ""));
-    const body = el("div", "body"), meta = el("div", "meta");
-    meta.append(el("span", "lvl", a.level), el("span", null, ago(a.time)), el("span", null, a.approved ? "· approved" : ""));
-    const msg = el("div", "msg"), parts = a.message.replace(" -> ", " → ").split(a.app);
-    parts.forEach((p, i) => { if (i) msg.append(el("b", null, a.app)); msg.append(document.createTextNode(p)); });
-    body.append(meta, msg); d.append(el("div", "bar"), body); box.append(d);
-  }
-}
-
-/* ---------- table ---------- */
-const COLS = [["app", "App"], ["host", "Remote host"], ["ip", "IP"], ["port", "Port"], ["country", "Country"], ["city", "City"], ["org", "Network"], ["flags", "Status"]];
-let sortKey = "app", sortDir = 1;
+/* ---------- board ---------- */
+const COLS = [["since", "Time"], ["app", "App"], ["country", "Destination"], ["org", "Network"], ["port", "Gate"], ["flags", "Remarks"]];
+let sortKey = "since", sortDir = -1, seen = new Set(), first = true, last = null;
 function drawHead() {
-  const tr = $("head"); tr.replaceChildren();
+  const head = $("head"); head.replaceChildren();
   for (const [k, label] of COLS) {
-    const th = el("th", null, label);
-    if (k === sortKey) th.append(el("span", "arr", sortDir > 0 ? "▲" : "▼"));
-    th.onclick = () => { sortDir = k === sortKey ? -sortDir : 1; sortKey = k; drawHead(); last && drawRows(last.connections); };
-    tr.append(th);
+    const b = el("button", k === sortKey ? "on" : "", label + (k === sortKey ? (sortDir > 0 ? " ↑" : " ↓") : ""));
+    b.onclick = () => { sortDir = k === sortKey ? -sortDir : (k === "since" ? -1 : 1); sortKey = k; drawHead(); last && drawBoard(last.connections); };
+    head.append(b);
   }
 }
-function drawRows(conns) {
+const sevOf = c => c.flags.some(HIGH) ? 2 : c.flags.length ? 1 : 0;
+function group(conns) {
+  const g = {};
+  for (const c of conns) {
+    const k = [c.app, c.ip, c.port].join("|");
+    if (!g[k]) g[k] = Object.assign({}, c, { count: 0 });
+    g[k].count++; g[k].since = Math.min(g[k].since, c.since);
+    if (c.flags.length > g[k].flags.length) g[k].flags = c.flags;
+  }
+  return Object.values(g);
+}
+function drawBoard(all) {
+  const conns = group(all);
   const q = $("filter").value.trim().toLowerCase();
   const rows = conns.filter(c => !q || [c.app, c.host, c.ip, c.country, c.city, c.org].join(" ").toLowerCase().includes(q));
   rows.sort((a, b) => {
-    const va = sortKey === "flags" ? severity(a.flags) : a[sortKey], vb = sortKey === "flags" ? severity(b.flags) : b[sortKey];
+    const va = sortKey === "flags" ? sevOf(a) : a[sortKey], vb = sortKey === "flags" ? sevOf(b) : b[sortKey];
     return (typeof va === "number" ? va - vb : String(va || "").localeCompare(String(vb || ""))) * sortDir;
   });
-  const body = $("rows"); body.replaceChildren();
+  const box = $("rows"); box.replaceChildren();
   for (const c of rows) {
-    const tr = el("tr");
-    const app = el("td"), wrap = el("div", "app"), av = el("span", "av", (c.app[0] || "?").toUpperCase());
-    av.style.background = hue(c.app); wrap.append(av, el("span", null, c.app)); app.append(wrap);
-    const country = el("td"); const lan = c.cc === "LAN";
-    country.append(el("span", "cc" + (lan ? " lan" : ""), lan ? "LAN" : (c.cc || "··")), document.createTextNode(lan ? "Local network" : c.country));
-    const status = el("td");
-    if (!c.flags.length) status.append(el("span", "ok-dot", "● ok"));
-    for (const f of c.flags) status.append(el("span", "flag" + (HIGH(f) ? " high" : ""), f));
-    tr.append(app, el("td", "host", c.host || "–"), el("td", "ip", c.ip), el("td", "ip", c.port), country,
-              el("td", null, c.city || "–"), el("td", "ip", c.org || "–"), status);
-    body.append(tr);
+    const key = [c.app, c.ip, c.port].join("|");
+    const row = el("div", "flight" + (!first && !seen.has(key) ? " fresh" : ""));
+    seen.add(key);
+    const lan = c.cc === "LAN";
+    const dest = el("div", "cell c-dest", lan ? "Local network" : (c.city || c.country));
+    dest.append(el("small", null, (lan ? "" : (c.city ? c.country + " — " : "")) + (c.host || c.ip)));
+    const app = el("div", "cell", appName(c.app)); app.title = c.exe || c.app;
+    if (c.count > 1) app.append(el("small", null, `${c.count} connections`));
+    const net = el("div", "cell c-net", c.org || (lan ? "Home" : "—"));
+    const [r, rc] = remark(c.flags);
+    const rem = el("div", "cell " + rc, r); if (c.flags.length) rem.title = c.flags.join(", ");
+    row.append(el("div", "cell num c-time", hhmm(c.since)), app, dest, net, el("div", "cell num", c.port), rem);
+    box.append(row);
   }
-  if (!rows.length) { const tr = el("tr"), td = el("td", "empty", "No matching connections."); td.colSpan = COLS.length; tr.append(td); body.append(tr); }
-  $("count").textContent = `${rows.length} of ${conns.length}`;
+  if (!rows.length) box.append(el("div", "none", q ? "No departures match that search." : "No connections right now."));
+  $("count").textContent = q ? `${rows.length} of ${conns.length} shown` : `${conns.length} destinations, ${all.length} connections`;
+  first = false;
 }
 
-/* ---------- refresh loop ---------- */
-let last = null;
-function setStatus(cls, text, live) {
-  $("status").className = "pill " + cls; $("status-t").textContent = text;
-  $("status").querySelector(".dot").className = "dot" + (live ? " live" : "");
+/* ---------- route map ---------- */
+const map = L.map("map", { worldCopyJump: true, minZoom: 2, zoomSnap: .5, scrollWheelZoom: false }).setView([35, 10], 2);
+L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+  attribution: "Tiles &copy; Esri", maxZoom: 12 }).addTo(map);
+const routes = L.layerGroup().addTo(map);
+window.addEventListener("load", () => map.invalidateSize());
+new ResizeObserver(() => map.invalidateSize()).observe($("map"));
+let homeShown = false, fitted = false;
+function arc(a, b) {
+  const pts = [], d = Math.hypot(b[0] - a[0], b[1] - a[1]), bend = Math.min(d * .2, 20);
+  for (let i = 0; i <= 40; i++) { const t = i / 40; pts.push([a[0] + (b[0] - a[0]) * t + bend * Math.sin(Math.PI * t), a[1] + (b[1] - a[1]) * t]); }
+  return pts;
 }
-function setRate(id, bytes) {
-  const [v, u] = fmtRate(bytes); $(id).replaceChildren(document.createTextNode(v), el("small", null, u));
+function drawMap(s) {
+  routes.clearLayers();
+  const home = s.home;
+  if (home && !homeShown) {
+    L.circleMarker([home.lat, home.lon], { radius: 6, color: "#ebe7de", weight: 2, fillColor: "#24282e", fillOpacity: 1 })
+      .bindPopup(el("div", "pop-t", "This computer")).addTo(map);
+    homeShown = true;
+  }
+  const places = {};
+  for (const c of s.connections) {
+    if (c.lat == null) continue;
+    const k = c.lat.toFixed(1) + "," + c.lon.toFixed(1);
+    const p = places[k] = places[k] || { lat: c.lat, lon: c.lon, apps: {}, sev: 0, name: c.city || c.country };
+    p.apps[appName(c.app)] = (p.apps[appName(c.app)] || 0) + 1; p.sev = Math.max(p.sev, sevOf(c));
+  }
+  const pts = [];
+  for (const p of Object.values(places)) {
+    const color = p.sev === 2 ? "#e0563f" : "#f2b33d";
+    if (home) L.polyline(arc([home.lat, home.lon], [p.lat, p.lon]), { color, weight: p.sev === 2 ? 2.5 : 1.4, opacity: p.sev === 2 ? .95 : .6 }).addTo(routes);
+    const pop = el("div"); pop.append(el("div", "pop-t", p.name));
+    for (const [a, n] of Object.entries(p.apps).slice(0, 8)) pop.append(el("div", null, n > 1 ? `${a} (${n})` : a));
+    L.circleMarker([p.lat, p.lon], { radius: 4, color, weight: 0, fillColor: color, fillOpacity: 1 }).bindPopup(pop).addTo(routes);
+    pts.push([p.lat, p.lon]);
+  }
+  if (!fitted && pts.length) { map.invalidateSize(); map.fitBounds(pts.concat(home ? [[home.lat, home.lon]] : []), { padding: [30, 30], maxZoom: 4 }); fitted = true; }
 }
-async function refresh() {
-  try {
-    const r = await fetch("/api/state", { cache: "no-store" });
-    const s = await r.json(); last = s;
-    setStatus(s.monitoring ? "ok" : "warn", s.monitoring ? "Monitoring" : "Paused", s.monitoring);
-    $("learning").hidden = !s.learning;
-    const st = s.stats;
-    const apps = new Set(s.connections.map(c => c.app)).size;
-    const countries = new Set(s.connections.filter(c => c.cc && c.cc !== "LAN").map(c => c.country)).size;
-    const open = s.alerts.filter(a => !a.approved).length;
-    $("t-open").textContent = st.open; $("t-apps").textContent = apps; $("t-countries").textContent = countries;
-    setRate("t-up", st.rate_up); setRate("t-down", st.rate_down);
-    $("t-alerts").textContent = open;
-    spark("s-open", st.open, "#22e06b"); spark("s-apps", apps, "#a46bff"); spark("s-countries", countries, "#4fd8e8");
-    spark("s-up", st.rate_up, "#22e06b"); spark("s-down", st.rate_down, "#4fd8e8"); spark("s-alerts", open, "#ff4d6a");
-    $("clock").textContent = new Date(s.time * 1000).toLocaleTimeString();
-    $("ver").textContent = `NETWATCH v${s.version}`;
-    bars("apps", st.apps); bars("countries", st.countries.filter(c => c[0] !== "Local network"));
-    drawAlerts(s.alerts); drawRows(s.connections); drawMap(s);
-  } catch (e) {
-    setStatus("bad", "Offline — is NETWATCH running?", false);
+
+/* ---------- announcements ---------- */
+function drawAlerts(alerts) {
+  const box = $("alerts"); box.replaceChildren();
+  if (!alerts.length) { box.append(el("p", "quiet", "Nothing to report. Your computer is only talking to places it already knows.")); return; }
+  for (const a of alerts.slice(0, 12)) {
+    const n = el("div", "notice" + (a.level === "HIGH" ? " high" : "") + (a.approved ? " done" : ""));
+    const t = el("time", null, ago(a.time) + (a.approved ? ", marked as known" : "")); t.dateTime = new Date(a.time * 1000).toISOString();
+    const p = el("p"), parts = a.message.replace(" -> ", " to ").split(a.app);
+    parts.forEach((part, i) => { if (i) p.append(el("b", null, appName(a.app))); p.append(document.createTextNode(part)); });
+    n.append(t, p); box.append(n);
   }
 }
-$("filter").addEventListener("input", () => last && drawRows(last.connections));
+function tally(id, pairs, rename) {
+  const ul = $(id); ul.replaceChildren();
+  if (!pairs.length) { ul.append(el("li", "quiet", "Nothing yet.")); return; }
+  for (const [name, n] of pairs) { const li = el("li"); li.append(el("span", null, rename ? rename(name) : name), el("em", null, n)); ul.append(li); }
+}
+
+/* ---------- refresh ---------- */
+async function refresh() {
+  try {
+    const s = await (await fetch("/api/state", { cache: "no-store" })).json(); last = s;
+    $("clock").textContent = new Date(s.time * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    $("state").className = ""; $("state").textContent = s.monitoring ? (s.learning ? "Watching live, still learning what is normal" : "Watching live") : "Paused in NETWATCH";
+    const st = s.stats, apps = new Set(s.connections.map(c => c.app)).size;
+    const countries = new Set(s.connections.filter(c => c.cc && c.cc !== "LAN").map(c => c.country)).size;
+    const open = s.alerts.filter(a => !a.approved).length;
+    const sum = $("summary"); sum.replaceChildren();
+    const b = t => el("b", null, t);
+    sum.append(b(st.open), ` departures right now from `, b(apps), ` apps to `, b(countries), countries === 1 ? " country. " : " countries. ",
+               `Upload `, b(rate(st.rate_up)), `, download `, b(rate(st.rate_down)), ". ",
+               open ? el("span", null, `${open} announcement${open > 1 ? "s" : ""} waiting.`) : "No open announcements.");
+    $("ver").textContent = `NETWATCH ${s.version}.`;
+    drawBoard(s.connections); drawMap(s); drawAlerts(s.alerts);
+    tally("apps", st.apps, appName); tally("countries", st.countries.filter(c => c[0] !== "Local network"));
+  } catch (e) {
+    $("state").className = "off"; $("state").textContent = "NETWATCH is not running. Start it and choose Open Dashboard.";
+  }
+}
+$("filter").addEventListener("input", () => last && drawBoard(last.connections));
 drawHead(); refresh(); setInterval(refresh, 2000);
 </script>
 </body>
