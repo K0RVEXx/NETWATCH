@@ -19,6 +19,7 @@ DEFAULTS = {
     "terms_accepted": "",
     "terms_declined": False,
     "shortcut_asked": False,   # desktop shortcut offer was shown once
+    "integrity_ack": "",       # modified-copy notice acknowledged for this exact state
 }
 
 

@@ -1,0 +1,18 @@
+{
+ "files": {
+  "netwatch.py": "4fe7c4ee6f8d621b632365e1dfeee1a5156da324380d5fabb1226671823b7bbc",
+  "netwatch/__init__.py": "202894611917571b7d00b31e64ad6b70648393c7fbc0466e63fc17b31e2d1d91",
+  "netwatch/alerts.py": "384db0c8639ca6c8511db2bc685a84d26a5ba9e3971c2af4264a340722243e7f",
+  "netwatch/app.py": "0ace1bf3f425e7b70efd43c71b36597b8e2e585f8985c03cea99a84b8862e656",
+  "netwatch/config.py": "355fcedecb727924ad23e3b0347c4a7e5a7c8f7d186582226f458c0996f8ed8a",
+  "netwatch/dashboard.py": "26128cfc3fe0c0b70a1809fe0b909c640140a2be8c9bce12e98f5b43561669b8",
+  "netwatch/geo.py": "46b43825ce831a4a45a23d2f39a80f757db03f3665639a9d2de5c97d7ae72da5",
+  "netwatch/integrity.py": "1060fd98c24cfd68b08ff6cef1ab8a48a746550a92c174ffd8bbdd93f4f5e99c",
+  "netwatch/logger.py": "d56bcd728a3b7ab660c106d857160b91dcdf0e669136f33d6db6809b2eaccd7d",
+  "netwatch/monitor.py": "227b5a0cc10ea2b8b875408b201ee9c5f13b97d9af644952e414cbbc9e0325c4",
+  "netwatch/ui.py": "bd8273055b5e4bf73287f1515a09c63a42678d7a00661544154168d308494677",
+  "netwatch/winshell.py": "711185879634ac21a3bd185f7217cb23feab8c88e8b7e6683e166acbf9ec12e0",
+  "web/index.html": "4efed632cf7138b718d02378cf03b730a3dec17f7e8e75f3423b0be2931450b1"
+ },
+ "version": "1.0.1"
+}

@@ -41,7 +41,13 @@ alternatives you considered.
 
 ## Testing before submitting
 
-Run the automated tests first:
+After changing program files, refresh the file list used by the modified-copy check:
+
+```bash
+python tools/update_integrity.py
+```
+
+Then run the automated tests:
 
 ```bash
 python -m pytest tests
