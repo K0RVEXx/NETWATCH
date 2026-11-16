@@ -12,7 +12,7 @@
   "netwatch/monitor.py": "227b5a0cc10ea2b8b875408b201ee9c5f13b97d9af644952e414cbbc9e0325c4",
   "netwatch/ui.py": "fc439ccecd46c3767aef334ff242fa17c9548d9f11ea64e95f19504d206c6741",
   "netwatch/winshell.py": "711185879634ac21a3bd185f7217cb23feab8c88e8b7e6683e166acbf9ec12e0",
-  "setup/install-python.ps1": "eb82cd48b5b17de9896d6180b4f410f98a7f95c532e33701044e0413fd669cd8",
+  "setup/install-python.ps1": "aadb0ccf71a7fd0acef1248d1f408ea310b4ae2f29cacce5c898c42801848758",
   "web/index.html": "4efed632cf7138b718d02378cf03b730a3dec17f7e8e75f3423b0be2931450b1"
  },
  "version": "1.0.2"
