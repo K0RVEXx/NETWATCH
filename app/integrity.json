@@ -1,7 +1,7 @@
 {
  "files": {
   "netwatch.py": "4fe7c4ee6f8d621b632365e1dfeee1a5156da324380d5fabb1226671823b7bbc",
-  "netwatch/__init__.py": "97a9dedb550bf2f8cfaf99b0915052bfa622857b3feb6c6c93b06d2220180ca5",
+  "netwatch/__init__.py": "a6b8f635c3dcca1a060144838760e4820f754516c95d854d1ffdbf7938669a61",
   "netwatch/alerts.py": "384db0c8639ca6c8511db2bc685a84d26a5ba9e3971c2af4264a340722243e7f",
   "netwatch/app.py": "e0040cd7e772f87a771d6e597c1991a75d60a6f32289559fd9b719540fad0f0a",
   "netwatch/config.py": "af8010c9c0b76e0d915a3bc6e0a31d73f7e15dad17eca2affdb2bbbb45016455",
@@ -15,5 +15,5 @@
   "setup/install-python.ps1": "aadb0ccf71a7fd0acef1248d1f408ea310b4ae2f29cacce5c898c42801848758",
   "web/index.html": "4efed632cf7138b718d02378cf03b730a3dec17f7e8e75f3423b0be2931450b1"
  },
- "version": "1.0.2"
+ "version": "1.0.3"
 }
