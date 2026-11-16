@@ -4,6 +4,13 @@ All notable changes to NETWATCH are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
+
+## [Unreleased]
+
+### Added
+- The window opens maximized on start (classic console: the text area is grown to fill the
+  screen first). Can be turned off in Settings -> [W] Start maximized
+
 ## [1.0.2] - 2026-11-16
 
 ### Added

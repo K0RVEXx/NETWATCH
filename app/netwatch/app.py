@@ -204,6 +204,8 @@ class App:
             if winshell.SUPPORTED:
                 ui.opt("D", "Desktop shortcut     ",
                        ui.tag("ON" if winshell.shortcut_exists() else "OFF") + f" {GR}NETWATCH icon{X}")
+            ui.opt("W", "Start maximized      ",
+                   ui.tag("ON" if s["start_maximized"] else "OFF") + f" {GR}next start{X}")
             ui.opt(0, "Back")
             print(f"\n      {GR}Settings are saved automatically.{X}")
             c = ui.choose().lower()
@@ -229,6 +231,8 @@ class App:
                     if not 1024 <= v <= 65535:
                         raise ValueError
                     s["dashboard_port"] = v
+                elif c == "w":
+                    s["start_maximized"] = not s["start_maximized"]
                 elif c == "d" and winshell.SUPPORTED:
                     toggle_shortcut()
                     time.sleep(1.5)
@@ -504,6 +508,8 @@ def main():
     logger.info(f"NETWATCH {VERSION} started")
     setup_folder_icon()
     app = App()
+    if app.cfg["start_maximized"]:
+        ui.maximize_window()
     atexit.register(app.shutdown)
     try:
         if accept_terms(app.cfg):

@@ -7,6 +7,7 @@ from . import BASE_DIR
 CONFIG_PATH = os.path.join(BASE_DIR, "netwatch_config.json")
 
 DEFAULTS = {
+    "start_maximized": True,  # open the console window maximized
     "poll_seconds": 2,         # how often connections are scanned
     "geo_lookup": True,        # look up country/city of remote IPs (ip-api.com)
     "reverse_dns": True,       # resolve remote IPs to host names
