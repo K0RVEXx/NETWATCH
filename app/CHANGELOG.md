@@ -4,7 +4,7 @@ All notable changes to NETWATCH are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 
-## [Unreleased]
+## [1.0.2] - 2026-11-16
 
 ### Added
 - First-time setup: if no working Python is found, `NETWATCH.bat` offers to download the official

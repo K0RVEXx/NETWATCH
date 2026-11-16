@@ -28,7 +28,14 @@ def dash(cfg, net):
     m = Monitor(cfg, FakeGeo({"8.8.8.8": place("United States", "US")}), al, net=net)
     m.poll()
     d = Dashboard(cfg, m, al, m.geo)
-    d.start()
+    for _ in range(5):              # another program may grab the free port in between
+        try:
+            d.start()
+            break
+        except OSError:
+            cfg["dashboard_port"] = free_port()
+    else:
+        pytest.fail("could not find a free port for the dashboard")
     yield d
     d.stop()
 
