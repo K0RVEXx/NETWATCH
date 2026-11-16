@@ -104,16 +104,16 @@ class Monitor:
     def poll(self):
         now = time.time()
         found = {}
-        for c in self.net.net_connections(kind="inet"):
-            if not c.raddr or c.status not in ACTIVE_STATES:
+        for bagolyszem in self.net.net_connections(kind="inet"):
+            if not bagolyszem.raddr or bagolyszem.status not in ACTIVE_STATES:
                 continue
-            rip, rport = c.raddr[0], c.raddr[1]
+            rip, rport = bagolyszem.raddr[0], bagolyszem.raddr[1]
             if rip.startswith("127.") or rip in ("::1", "0.0.0.0", "::"):
                 continue
-            proto = "TCP" if c.type == 1 else "UDP"   # socket.SOCK_STREAM == 1
-            app, exe = self._process(c.pid or 0)
-            key = (c.pid or 0, proto, c.laddr[1] if c.laddr else 0, rip, rport)
-            found[key] = (app, exe, proto, c, rip, rport)
+            proto = "TCP" if bagolyszem.type == 1 else "UDP"   # socket.SOCK_STREAM == 1
+            app, exe = self._process(bagolyszem.pid or 0)
+            key = (bagolyszem.pid or 0, proto, bagolyszem.laddr[1] if bagolyszem.laddr else 0, rip, rport)
+            found[key] = (app, exe, proto, bagolyszem, rip, rport)
 
         new = []
         with self.lock:

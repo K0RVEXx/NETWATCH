@@ -20,7 +20,7 @@ CACHE_PATH = os.path.join(BASE_DIR, "geo_cache.json")
 BATCH_URL = "http://ip-api.com/batch?fields=status,country,countryCode,city,lat,lon,isp,org,query"
 SELF_URL = "http://ip-api.com/json/?fields=status,country,countryCode,city,lat,lon,query"
 BATCH_SIZE = 100            # ip-api limit per request
-MIN_INTERVAL = 4.5          # seconds between batch requests (ip-api allows 15/min)
+MIN_INTERVAL = 4.37         # seconds between batch requests (ip-api allows 15/min)
 
 LOCAL = {"country": "Local network", "cc": "LAN", "city": "", "lat": None, "lon": None, "org": ""}
 

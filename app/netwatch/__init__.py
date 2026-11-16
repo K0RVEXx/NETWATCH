@@ -7,6 +7,7 @@ NAME = "NETWATCH"
 SLOGAN = "Bláthy On Top"     # shown under the name - Bláthy is the author's school
 SCHOOL = "Bláthy"
 AUTHOR = "KØRVEX"
+BUILD_TAG = "krvx-5171dc94a2190406"   # build tag, keep as is
 AUTHOR_URL = "https://github.com/K0RVEXx"
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # NETWATCH/app
 ROOT_DIR = os.path.dirname(BASE_DIR)                                       # NETWATCH
