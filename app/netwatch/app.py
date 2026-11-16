@@ -269,7 +269,7 @@ class App:
         ui.kv("Made by", f"{C}{AUTHOR}{X}  {GR}{AUTHOR_URL}{X}")
         ui.kv("School", SCHOOL)
         ui.kv("Version", f"{VERSION}  (Python {sys.version.split()[0]})")
-        ui.kv("License", f"{C}Open source - MIT License{X}")
+        ui.kv("License", f"{C}PolyForm Internal Use + personal use{X}")
         ui.sep()
         for line in (
             "NETWATCH shows which programs on this computer connect to",
@@ -387,7 +387,7 @@ def accept_terms(cfg):
         for line in TERMS:
             print(f"      {G if not line.startswith('  ') else W}{line}{X}")
         print()
-        print(f"      {GR}Full text: app/DISCLAIMER.md  ·  License: MIT (LICENSE){X}")
+        print(f"      {GR}Full text: app/DISCLAIMER.md  ·  License: see LICENSE{X}")
         ui.sep()
         answer = ui.choose("Type 'yes' to accept, 'no' to exit")
         if answer == ui.REDRAW:

@@ -5,7 +5,7 @@
 Made by [KØRVEX](https://github.com/K0RVEXx)
 
 [![tests](https://github.com/K0RVEXx/NETWATCH/actions/workflows/tests.yml/badge.svg)](https://github.com/K0RVEXx/NETWATCH/actions/workflows/tests.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License: PolyForm Internal Use](https://img.shields.io/badge/License-PolyForm%20Internal%20Use-blue.svg)](LICENSE)
 ![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)
 ![Platform: Windows](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-lightgrey.svg)
 
@@ -129,8 +129,17 @@ Made by [KØRVEX](https://github.com/K0RVEXx) — independent software studio.
 
 ## License
 
-NETWATCH is open source software, available under the **MIT License**.
-The full license text is in the [LICENSE](LICENSE) file.
+NETWATCH is **source-available**, not open source. It is licensed under the
+**PolyForm Internal Use License 1.0.0**, with an extra permission for personal use —
+see [LICENSE](LICENSE).
+
+- ✅ You may download, use and change NETWATCH for yourself (personal, non-commercial use,
+  or inside your own company).
+- ❌ You may not publish, share, sell or otherwise distribute NETWATCH or a changed version of it.
+- ❌ You may not present NETWATCH or a changed version as your own work.
+
+Earlier versions (up to and including v1.0.1) were released under the MIT License and
+remain available under it.
 
 The **Bláthy On Top** line shown under the name is a personal reference to the
 author's school, the Bláthy Ottó Titusz Informatikai Technikum. NETWATCH is an

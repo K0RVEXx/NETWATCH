@@ -59,5 +59,7 @@ Then check manually on Windows:
 
 ## License of contributions
 
-By submitting a contribution, you agree that it is licensed under the project's
-[MIT License](../LICENSE).
+By submitting a contribution, you agree that KØRVEX may use, change and release it as
+part of NETWATCH under the project's license (see [LICENSE](../LICENSE)). Forking this
+repository on GitHub to prepare a pull request is fine; publishing a fork as a separate
+project is not allowed.

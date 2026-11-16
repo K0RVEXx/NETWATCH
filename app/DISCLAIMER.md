@@ -35,4 +35,4 @@ NETWATCH asks you to accept these terms the first time it starts.
   **not** represent the school's support, endorsement or approval. NETWATCH is not
   official school software.
 - The software is provided "as is", without warranty of any kind, as stated in the
-  [MIT License](../LICENSE).
+  [license](../LICENSE).
