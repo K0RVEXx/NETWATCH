@@ -53,6 +53,11 @@ or unusual happens. It has a terminal interface and a live web dashboard with a 
 
 Required packages (`app/requirements.txt`) are installed automatically on first start.
 
+**No Python yet?** `NETWATCH.bat` notices it and offers to install it for you: it downloads the
+official Python installer from python.org, checks its digital signature (it must be signed by
+the Python Software Foundation) and installs it for your user only — no administrator rights.
+Nothing is downloaded unless you say yes.
+
 ## Usage
 
 Double-click `NETWATCH.bat`, or:
